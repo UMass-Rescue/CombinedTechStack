@@ -1,0 +1,110 @@
+{
+  "name": "opskit-lite",
+  "version": "0.1.0",
+  "private": true,
+  "main": "main/index.js",
+  "homepage": "http://.",
+  "author": "Jagath Jai Kumar, Cody Richter",
+  "license": "MIT",
+  "devDependencies": {
+    "child_process": "^1.0.2",
+    "concurrently": "^5.3.0",
+    "electron": "^9.1.2",
+    "electron-builder": "^22.8.0",
+    "electron-react-devtools": "^0.5.3",
+    "eslint-plugin-react": "^7.12.4",
+    "jest-cli": "^26.3.0",
+    "jest-each": "^26.3.0",
+    "jest-environment-jsdom-sixteen": "^1.0.3",
+    "puppeteer": "^5.2.1",
+    "run-script-os": "^1.1.1",
+    "spectron": "^11.1.0",
+    "typescript": "^3.9.7"
+  },
+  "dependencies": {
+    "@material-ui/core": "^4.2.1",
+    "@material-ui/data-grid": "^4.0.0-alpha.13",
+    "@material-ui/icons": "^4.2.1",
+    "@material-ui/lab": "^4.0.0-alpha.56",
+    "@material-ui/styles": "^4.2.1",
+    "axios": "^0.19.2",
+    "clsx": "^1.0.4",
+    "file-saver": "^2.0.5",
+    "fontsource-roboto": "^3.0.3",
+    "history": "^4.9.0",
+    "node-sass": "4.14.1",
+    "prop-types": "^15.7.2",
+    "react": "^16.13.1",
+    "react-dom": "^16.8.6",
+    "react-dropzone": "^11.1.0",
+    "react-hook-form": "^6.2.0",
+    "react-perfect-scrollbar": "^1.5.3",
+    "react-router-dom": "^5.0.1",
+    "react-scripts": "^4.0.0"
+  },
+  "scripts": {
+    "init": "npm install && pip install -r ../backend/requirements.txt",
+    "start-electron": "run-script-os",
+    "start-electron:default": "export DISPLAY=:0.0 && export ELECTRON_START_URL=http://localhost:3000 && electron main",
+    "start-electron:windows": "set DISPLAY=:0.0 && set ELECTRON_START_URL=http://localhost:3000 && set ENVIRONMENT=debug && electron main",
+    "start": "react-scripts start",
+    "start-react": "run-script-os",
+    "start-react:default": "export BROWSER=none && react-scripts start",
+    "start-react:windows": "react-scripts start",
+    "debug": "run-script-os",
+    "debug:default": "export ENVIRONMENT=debug && concurrently 'npm run start-react' 'npm run start-backend' 'sleep 5 && npm run start-electron' ",
+    "debug:windows": "set ENVIRONMENT=debug && concurrently 'npm run start-react' 'npm run start-backend'",
+    "dev": "run-script-os",
+    "dev:default": "export ENVIRONMENT=development && concurrently 'npm run start-react' 'sleep 5 && npm run start-electron' ",
+    "dev:windows": "set ENVIRONMENT=development && concurrently 'npm run start-react' 'sleep 5 && npm run start-electron'",
+    "prod": "run-script-os",
+    "prod:default": "export ENVIRONMENT=production && npm run start-electron",
+    "prod:windows": "set ENVIRONMENT=production && npm run start-electron",
+    "setup": "npm install && pip3 install -r backend/requirements-dev.txt",
+    "build": "react-scripts build",
+    "build-python": "run-script-os",
+    "build-python:default": "virtualenv -p python3 backend/venv-app && ./backend/venv-app/bin/pip install -r backend/requirements-api.txt && ./backend/venv-app/bin/pyinstaller -F ../backend/main.py --workpath ./backend_build --distpath ./backend_dist --specpath ./backend_spec",
+    "build-python:windows": "virtualenv -p python3 backend\\\\venv-app && ./backend\\\\venv-app\\\\bin\\\\pip install -r backend\\\\requirements-api.txt && ./backend\\\\venv-app\\\\bin\\\\pyinstaller -F ../backend/main.py --workpath ./backend_build --distpath ./backend_dist --specpath ./backend_spec",
+    "clean": "run-script-os",
+    "clean:default": "rm -rf python/venv-app backend_build backend_dist backend_spec build dist backend/venv-app",
+    "clean:windows": "rmdir python\\venv-app backend_build backend_dist backend_spec build dist backend/venv-app",
+    "test": "run-script-os",
+    "test:default": "export DISPLAY=:0 && export ELECTRON_START_URL=http://localhost:3000 && concurrently 'react-scripts test ./tests --runInBand --verbose --env=jest-environment-jsdom-sixteen --watchAll=false'",
+    "test:windows": "set DISPLAY=:0 && set ELECTRON_START_URL=http://localhost:3000 &&  react-scripts test ./tests --runInBand --verbose --env=jest-environment-jsdom-sixteen --watchAll=false",
+    "pytest": "run-script-os",
+    "pytest:default": "export PYTHONPATH=$PWD/backend && export DISPLAY= && cd ../backend && pytest && cd ..",
+    "pytest:windows": "set PYTHONPATH=$PWD/backend &&set DISPLAY= && cd ../backend && pytest && cd ..",
+    "eject": "react-scripts eject",
+    "package-electron": "npm run clean && npm run build && npm run build-python && electron-builder build -c.extraMetadata.main=main/index.js --publish never"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "build": {
+    "appId": "nonExistentID",
+    "files": [
+      "build/**/*",
+      "main/**/*",
+      "node_modules/**/*",
+      "public/**/*",
+      "backend_dist/**/*"
+    ]
+  },
+  "description": "An operational toolkit for triage and simplification of common everyday investigative tasks.",
+  "repository": {
+    "type": "git",
+    "url": "https://dev.forceforge.org/daniel_johns/opskit.git"
+  }
+}
