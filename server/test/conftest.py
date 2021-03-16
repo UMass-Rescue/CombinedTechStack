@@ -32,7 +32,6 @@ def test_configuration():
     api_key_collection.delete_many({'user': 'testing'})  # Delete all API keys created during testing
 
 
-
 def override_logged_in_user():
     return get_user_by_name_db("testing")
 

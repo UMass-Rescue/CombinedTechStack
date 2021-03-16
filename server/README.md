@@ -1,36 +1,73 @@
-# PhotoAnalysisServer Webserver
-This folder contains the FastAPI webserver used as the core of the PhotoAnalysisServer.
+# PhotoAnalysisServer
 
-## Getting the Server Up and Running
-
-At this point it is assumed that you have the docker container for this server up and running and are now looking to run the server. You should also have at least one ML model up and running. Instructions for setting up a model can be found [here](https://github.com/CodyRichter/MLMicroserviceTemplate)
-
-### Configure Postman
-
-To test this server, we will be using postman to send our `GET`/`POST` requests. You will need to make an account with the website, but you can download the client [here](https://www.postman.com/downloads/)
-
-### Uploading Image to Server
-
-To upload an image to the server, we will be making a `POST` request to `localhost:5000/predict`
-
-Select the `body` tab right under the `POST` request bar and in that tab, select the `form-data` option. In this field, write in `images` for a key, and make sure you select the value type to be a file so we will be able to upload files to the server. Upload the image or images you want to send to the server for analysis in the value section. 
-
-The other entry you will need to enter is for the models. At the moment, this server only supports running one model at a time, but we are hoping to change that in the near future. For this entry, type `models` into the key entry and the model name into the value entry. For the sake of this example, we are using the template `example_model`.
-
-![](https://i.imgur.com/PxdB3Bq.png)
-
-After filling out the form entries, press the send button to send the POST request to the server. If successful, it will return a hash value similar to the one returned above. Once you have this hash, you can move on to get the prediction results of the model from the server. 
-
-### Getting Prediction Results from Server
-
-![](https://i.imgur.com/Ccfl8RG.png)
-
-To receive the prediction results from the server, you must have the image hash that was returned in the response body of `POST /predict`. Then, you can make a `GET` request to `/predict/<hash>`, where `<hash>` is the hash that was returned.
-> **Example:** `GET localhost:5000/predict/a2afb42a1e9d55c9f07669b095a0b4b6` will return a JSON result: `
-> {"status": "SUCCEEDED","results": {"someResultCategory": "actualResultValue"}}`
+![Test Cases](https://github.com/UMass-Rescue/CombinedTechStack/workflows/CI/badge.svg)
 
 
-## Current Limitations
-- The endpoint `POST /predict` is only able to handle a single model name string in the `models` section of the request body. In the future, this will be expanded to allow for an array of model names to be passed
-- If you create multiple predictions for a single image with different models, only the final prediction result will be stored since the key it is saved under is image-specific, not model-specific. 
-    - When MongoDB is implemented in the future, the system will be able to track multiple model results for a single image successfully
+[![codecov](https://codecov.io/gh/UMass-Rescue/CombinedTechStack/branch/master/graph/badge.svg?token=PPHUI2233J)](https://codecov.io/gh/UMass-Rescue/CombinedTechStack)
+
+
+This is a server designed to handle and dispatch requests to machine learning models, and then return the prediction results to clients. A queue system is utilized.
+
+
+## Overview
+A client can post a request which contains the images and what models he wants to run the analysis on the images. The servers then verify the model names. If all the models are present, a md5 hash is generated for each image which is its unique identifier for the image which is used to track its status throughout the pipeline. These hashes are returned to the client as a response to the post request.
+
+Once the hash is generated, the image is stored on the server in the docker volume. A job id is then created which is an image, model pair i.e. each job id contains information to access the image and what model to run on said image.
+
+The Job IDs are stored in redis and they are put in a job queue using redis queue. Once an ML microservice is done working on a job, the redis will reflect that. The status of the job can be accessed through a get request using the image key(the hash).
+
+---
+
+## Initial Setup
+
+To run this application, there are some commands that must be run. All of these should be done via the command line in the root directory of the project folder.
+
+
+#### Set up Application with Docker
+Ensure that you have Docker running on your computer before attempting these commands
+
+#### Microservices:
+
+Prediction and training microservices will automatically be registered to the server once
+they are started. Microservices must also use an API key that is registered for a specific
+microservice type.
+
+Use the following API endpoint with Postman or the client to generate the keys:
+`POST /auth/key`
+
+See the [[Postman Endpoint Collection]](https://app.getpostman.com/run-collection/8ae4299e6f600505577c) for more information.
+
+##### [Step 1] Build Docker Container
+Download dependencies with Docker and build container
+```
+docker-compose build
+```
+
+##### [Step 2] Start Docker Container
+Start application
+```
+docker-compose up
+```
+
+---
+
+## Project Architecture
+![](https://i.imgur.com/z4WX9v0.png)
+
+
+## Development Information
+
+- The server will automatically restart when changes are made for development, and changes to
+  associated microservices will automatically be propagated to the server.
+- For more in-depth information on interacting with the server, see the `README.md` in the `./server/` directory.
+
+### API Information
+
+To get the full functionality from the server, you should use the client or postman instead
+of python to call endpoint methods.
+
+Postman is an exceptional tool for testing, calling, and debugging API endpoints. To help
+your development, you may download the collection of pre-made endpoints with their associated
+parameters.
+
+[![Run in Postman](https://run.pstmn.io/button.svg)](https://app.getpostman.com/run-collection/8ae4299e6f600505577c)
