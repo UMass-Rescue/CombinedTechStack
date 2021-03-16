@@ -23,8 +23,6 @@ Run the command `docker-compose build`
 
 ## Running the Application
 
-Run the command `docker-compose build`
-
 ### Start Application
 
 Run the command `docker-compose up`

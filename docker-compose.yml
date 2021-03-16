@@ -301,6 +301,15 @@ services:
     volumes:
       - db_container:/data/db
 
+  # ------------------------------------------------------------------------------
+  #           Testing
+  # ------------------------------------------------------------------------------
+
+#  testing:
+#    image: python
+#    container_name: testing
+
+
 volumes:
   db_container:
   prediction_images:
