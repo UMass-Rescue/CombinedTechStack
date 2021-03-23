@@ -1,0 +1,14 @@
+pydantic
+fastapi
+pyinstaller
+setuptools
+uuid
+uvicorn
+python-multipart
+pillow
+python-dotenv
+requests
+starlette
+imagehash
+rq
+redis
