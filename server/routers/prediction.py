@@ -123,15 +123,21 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
 
         for model in models:
             model_socket = settings.available_models[model]
-            try:
-                logger.debug('Creating Prediction Request. Hash: ' + hash_md5 + ' Model: ' + model)
-                request = requests.post(
-                    model_socket + '/predict',
-                    params={'image_md5_hash': hash_md5, 'image_file_name': new_filename}
-                )
-                request.raise_for_status()  # Ensure prediction job hasn't errored.
-            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-                logger.error('Fatal error when creating prediction request. Hash: "' + hash_md5 + '" Model: ' + model)
+            # try:
+            #     logger.debug('Creating Prediction Request. Hash: ' + hash_md5 + ' Model: ' + model)
+            #     request = requests.post(
+            #         model_socket + '/predict',
+            #         params={'image_md5_hash': hash_md5, 'image_file_name': new_filename}
+            #     )
+            #     request.raise_for_status()  # Ensure prediction job hasn't errored.
+            # except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
+            #     logger.error('Fatal error when creating prediction request. Hash: "' + hash_md5 + '" Model: ' + model)
+
+            # From microservice
+            # dependency.prediction_queue.enqueue(
+            #     predict_image, image_md5_hash, image_file_name, os.getenv('SERVER_PORT'), job_id=image_md5_hash
+            # )
+
 
     return {"images": [hashes_md5[key] for key in hashes_md5]}
 
@@ -373,34 +379,3 @@ def receive_prediction_results(model_prediction_result: dependency.ModelPredicti
         image_object = get_image_by_md5_hash_db(model_prediction_result.image_hash)
         add_model_to_image_db(image_object, model_prediction_result.model_name, model_result)
         add_model_db(model_prediction_result.model_name, model_classes)
-
-
-def ping_model(model_name):
-    """
-    Periodically ping a model's service to make sure that it is active. If it's not, remove the model from the
-    available_models BaseSetting in dependency.py
-
-    :param model_name: Name of model to ping. This is the name the model registered to the server with.
-    """
-
-    model_is_alive = True
-
-    def kill_model():
-        settings.available_models.pop(model_name)
-        nonlocal model_is_alive
-        model_is_alive = False
-        logger.debug("Model " + model_name + " is not responsive. Removing the model from available services...")
-
-    while model_is_alive and not dependency.shutdown:
-        try:
-            r = requests.get('http://host.docker.internal:' + str(settings.available_models[model_name]) + '/status')
-            r.raise_for_status()
-            for increment in range(dependency.WAIT_TIME):
-                if not dependency.shutdown:  # Check between increments to stop hanging on shutdown
-                    time.sleep(1)
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-            kill_model()
-            return
-
-    if dependency.shutdown:
-        logger.debug("Model [" + model_name + "] Healthcheck Thread Terminated.")

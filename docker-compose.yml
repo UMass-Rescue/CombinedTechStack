@@ -4,19 +4,19 @@ services:
   #           Client + Server
   # ------------------------------------------------------------------------------
 
-  client:
-    container_name: client
-    stdin_open: true
-    build:
-      context: client
-      dockerfile: Dockerfile
-    volumes:
-      - './client/:/app'
-      - '/app/node_modules'
-    ports:
-      - 3000:3000
-    environment:
-      - CHOKIDAR_USEPOLLING=true
+  # client:
+  #   container_name: client
+  #   stdin_open: true
+  #   build:
+  #     context: client
+  #     dockerfile: Dockerfile
+  #   volumes:
+  #     - './client/:/app'
+  #     - '/app/node_modules'
+  #   ports:
+  #     - 3000:3000
+  #   environment:
+  #     - CHOKIDAR_USEPOLLING=true
 
   server:
     stdin_open: true
@@ -34,204 +34,24 @@ services:
       - ${SERVER_PORT}:${SERVER_PORT}
 
   # ------------------------------------------------------------------------------
-  #           Prediction Microservices
-  # ------------------------------------------------------------------------------
-
-  prediction_template:
-    container_name: prediction_template
-    stdin_open: true
-    command: "uvicorn src.server.main:app --host ${PREDICT_HOST} --port 5010 --debug --reload-dir /app --log-level debug"
-    build:
-      context: prediction/PredictionTemplateMicroservice
-      dockerfile: Dockerfile
-    volumes:
-      - ./prediction/PredictionTemplateMicroservice:/app
-      - prediction_images:/app/src/images
-    environment:
-      - NAME=example_model
-      - PORT=5010
-      - GUNICORN_CMD_ARGS=--reload
-      - SERVER_PORT=${SERVER_PORT}
-    ports:
-      - 5010:5010
-
-  prediction_average_pixel:
-    container_name: prediction_average_pixel
-    stdin_open: true
-    command: "uvicorn src.server.main:app --host ${PREDICT_HOST} --port 5011 --debug --reload-dir /app --log-level debug"
-    build:
-      context: prediction/AveragePixelMicroservice
-      dockerfile: Dockerfile
-    volumes:
-      - ./prediction/AveragePixelMicroservice:/app
-    environment:
-      - NAME=predict_average_pixel
-      - PORT=5011
-      - GUNICORN_CMD_ARGS=--reload
-      - SERVER_PORT=${SERVER_PORT}
-    ports:
-      - 5011:5011
-
-  prediction_face_detect:
-    container_name: prediction_face_detect
-    stdin_open: true
-    command: "uvicorn src.server.main:app --host ${PREDICT_HOST} --port 5012 --debug --reload-dir /app --log-level debug"
-    build:
-      context: prediction/FaceDetectMicroservice
-      dockerfile: Dockerfile
-    volumes:
-      - ./prediction/FaceDetectMicroservice:/app
-    environment:
-      - NAME=face_detect
-      - PORT=5012
-      - GUNICORN_CMD_ARGS=--reload
-      - SERVER_PORT=${SERVER_PORT}
-    ports:
-      - 5012:5012
-
-  prediction_image_shape:
-    container_name: prediction_image_shape
-    stdin_open: true
-    command: "uvicorn src.server.main:app --host ${PREDICT_HOST} --port 5013 --debug --reload-dir /app --log-level debug"
-    build:
-      context: prediction/ImageShapeMicroservice
-      dockerfile: Dockerfile
-    volumes:
-      - ./prediction/ImageShapeMicroservice:/app
-    environment:
-      - NAME=image_shape
-      - PORT=5013
-      - GUNICORN_CMD_ARGS=--reload
-      - SERVER_PORT=${SERVER_PORT}
-    ports:
-      - 5013:5013
-
-  prediction_scene_detect:
-    container_name: prediction_scene_detect
-    stdin_open: true
-    command: "uvicorn src.server.main:app --host ${PREDICT_HOST} --port 5014 --debug --reload-dir /app --log-level debug"
-    build:
-      context: prediction/SceneDetectMicroservice-V2
-      dockerfile: Dockerfile
-    volumes:
-      - ./prediction/SceneDetectMicroservice-V2:/app
-    environment:
-      - NAME=scene_detect
-      - PORT=5014
-      - GUNICORN_CMD_ARGS=--reload
-      - SERVER_PORT=${SERVER_PORT}
-    ports:
-      - 5014:5014
-
-  prediction_image_hash:
-    container_name: prediction_image_hash
-    stdin_open: true
-    command: "uvicorn src.server.main:app --host ${PREDICT_HOST} --port 5015 --debug --reload-dir /app --log-level debug"
-    build:
-      context: prediction/HashMicroservice
-      dockerfile: Dockerfile
-    volumes:
-      - ./prediction/HashMicroservice:/app
-    environment:
-      - NAME=image_hash
-      - PORT=5015
-      - GUNICORN_CMD_ARGS=--reload
-      - SERVER_PORT=${SERVER_PORT}
-    ports:
-      - 5015:5015
-
-  # ------------------------------------------------------------------------------
-  #           Prediction Workers
+  #           Prediction Microservice Workers
   # ------------------------------------------------------------------------------
 
   worker_example_model:
-    container_name: worker_example_model
-    command: python3 src/server/worker.py
+    container_name: ${PREDICTION_TEMPLATE}_worker
+    command: python3 worker.py
     build:
-      context: prediction/PredictionTemplateMicroservice
+      context: prediction
       dockerfile: Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_TEMPLATE}
     volumes:
-      - ./prediction/PredictionTemplateMicroservice/:/app
-      - prediction_images:/app/src/images
+      - ./prediction/models/${PREDICTION_TEMPLATE}:/app/model
+      - prediction_images:/app/images
     environment:
       - GUNICORN_CMD_ARGS=--reload
-      - NAME=example_model
-    depends_on:
-      - redis
-
-  worker_prediction_average_pixel:
-    container_name: worker_prediction_average_pixel
-    command: python3 src/server/worker.py
-    build:
-      context: prediction/AveragePixelMicroservice
-      dockerfile: Dockerfile
-    volumes:
-      - ./prediction/AveragePixelMicroservice/:/app
-      - prediction_images:/app/src/images
-    environment:
-      - GUNICORN_CMD_ARGS=--reload
-      - NAME=predict_average_pixel
-    depends_on:
-      - redis
-
-  worker_prediction_face_detect:
-    container_name: worker_prediction_face_detect
-    command: python3 src/server/worker.py
-    build:
-      context: prediction/FaceDetectMicroservice
-      dockerfile: Dockerfile
-    volumes:
-      - ./prediction/FaceDetectMicroservice/:/app
-      - prediction_images:/app/src/images
-    environment:
-      - GUNICORN_CMD_ARGS=--reload
-      - NAME=face_detect
-    depends_on:
-      - redis
-
-  worker_prediction_image_shape:
-    container_name: worker_prediction_image_shape
-    command: python3 src/server/worker.py
-    build:
-      context: prediction/ImageShapeMicroservice
-      dockerfile: Dockerfile
-    volumes:
-      - ./prediction/ImageShapeMicroservice/:/app
-      - prediction_images:/app/src/images
-    environment:
-      - GUNICORN_CMD_ARGS=--reload
-      - NAME=image_shape
-    depends_on:
-      - redis
-
-  worker_prediction_scene_detect:
-    container_name: worker_prediction_scene_detect
-    command: python3 src/server/worker.py
-    build:
-      context: prediction/SceneDetectMicroservice-V2
-      dockerfile: Dockerfile
-    volumes:
-      - ./prediction/SceneDetectMicroservice-V2/:/app
-      - prediction_images:/app/src/images
-    environment:
-      - GUNICORN_CMD_ARGS=--reload
-      - NAME=scene_detect
-    depends_on:
-      - redis
-
-
-  worker_prediction_image_hash:
-    container_name: worker_prediction_image_hash
-    command: python3 src/server/worker.py
-    build:
-      context: prediction/HashMicroservice
-      dockerfile: Dockerfile
-    volumes:
-      - ./prediction/HashMicroservice/:/app
-      - prediction_images:/app/src/images
-    environment:
-      - GUNICORN_CMD_ARGS=--reload
-      - NAME=image_hash
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
     depends_on:
       - redis
 
@@ -239,46 +59,46 @@ services:
   #           Training Microservices
   # ------------------------------------------------------------------------------
 
-  mnist_fashion_dataset:
-    stdin_open: true
-    container_name: mnist_fashion_dataset
-    command: uvicorn src.server.main:app --host 0.0.0.0 --port 6006 --debug --reload-dir /app --log-level debug
-    build:
-      context: training/MNISTFashionMicroservice
-      dockerfile: Dockerfile
-    environment:
-      - GUNICORN_CMD_ARGS=--reload
-      - DATASET_LOCATION=${MNIST_FASHION_DATASET_LOCATION}
-      - SERVER_PORT=${SERVER_PORT}
-      - PORT=6006
-      - DATASET_NAME=mnist_fashion
-    volumes:
-      - ./training/MNISTFashionMicroservice/:/app
-      - mnist_fashion_dataset_vol:/app/src/dataset
-      - mnist_fashion_public_dataset_vol:/app/src/public_dataset
-    ports:
-      - 6006:6006
+  # mnist_fashion_dataset:
+  #   stdin_open: true
+  #   container_name: mnist_fashion_dataset
+  #   command: uvicorn src.server.main:app --host 0.0.0.0 --port 6006 --debug --reload-dir /app --log-level debug
+  #   build:
+  #     context: training/MNISTFashionMicroservice
+  #     dockerfile: Dockerfile
+  #   environment:
+  #     - GUNICORN_CMD_ARGS=--reload
+  #     - DATASET_LOCATION=${MNIST_FASHION_DATASET_LOCATION}
+  #     - SERVER_PORT=${SERVER_PORT}
+  #     - PORT=6006
+  #     - DATASET_NAME=mnist_fashion
+  #   volumes:
+  #     - ./training/MNISTFashionMicroservice/:/app
+  #     - mnist_fashion_dataset_vol:/app/src/dataset
+  #     - mnist_fashion_public_dataset_vol:/app/src/public_dataset
+  #   ports:
+  #     - 6006:6006
 
   # ------------------------------------------------------------------------------
   #           Training Microservice Workers
   # ------------------------------------------------------------------------------
 
-  mnist_fashion_dataset_worker:
-    container_name: mnist_fashion_dataset_worker
-    command: python3 src/server/worker.py
-    build:
-      context: training/MNISTFashionMicroservice
-      dockerfile: Dockerfile
-    volumes:
-      - ./training/MNISTFashionMicroservice/:/app
-      - mnist_fashion_dataset_vol:/app/src/dataset
-      - mnist_fashion_public_dataset_vol:/app/src/public_dataset
-    environment:
-      - GUNICORN_CMD_ARGS=--reload
-      - DATASET_NAME=mnist_fashion
-      - SERVER_PORT=${SERVER_PORT}
-    depends_on:
-      - redis
+  # mnist_fashion_dataset_worker:
+  #   container_name: mnist_fashion_dataset_worker
+  #   command: python3 src/server/worker.py
+  #   build:
+  #     context: training/MNISTFashionMicroservice
+  #     dockerfile: Dockerfile
+  #   volumes:
+  #     - ./training/MNISTFashionMicroservice/:/app
+  #     - mnist_fashion_dataset_vol:/app/src/dataset
+  #     - mnist_fashion_public_dataset_vol:/app/src/public_dataset
+  #   environment:
+  #     - GUNICORN_CMD_ARGS=--reload
+  #     - DATASET_NAME=mnist_fashion
+  #     - SERVER_PORT=${SERVER_PORT}
+  #   depends_on:
+  #     - redis
 
   # ------------------------------------------------------------------------------
   #           Shared Dependencies
