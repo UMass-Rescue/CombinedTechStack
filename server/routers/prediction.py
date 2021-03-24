@@ -143,12 +143,14 @@ async def get_jobs(md5_hashes: List[str]):
     if not md5_hashes:
         return []
 
-    for md5_hash in md5_hashes:
+    # If there are any pending predictions, alert user and return existing ones
+    # Since job_id is a composite hash+model, we must loop and find all jobs that have the
+    # hash we want to find. We must get all running and pending jobs to return the correct value
+    all_jobs = set()
+    for model in settings.available_models:
+        all_jobs.update(StartedJobRegistry(model, connection=redis).get_job_ids() + dependency.prediction_queues[model].job_ids)
 
-        # If there are any pending predictions, alert user and return existing ones
-        # Since job_id is a composite hash+model, we must loop and find all jobs that have the
-        # hash we want to find. We must get all running and pending jobs to return the correct value
-        all_jobs = StartedJobRegistry('model_prediction', connection=redis).get_job_ids() + prediction_queue.job_ids
+    for md5_hash in md5_hashes:
 
         image = get_image_by_md5_hash_db(md5_hash)  # Get image object
         found_pending_job = False
@@ -326,9 +328,8 @@ def register_model(model: MicroserviceConnection):
         }
 
 
-    # Register model as available
+    # Register model as available and add its queue
     settings.available_models.add(model.name)
-
     dependency.prediction_queues[model.name] = Queue(model.name, connection=redis)
 
     logger.debug("Model " + model.name + " successfully registered to server.")

@@ -1,8 +1,5 @@
 from PIL import Image
 import time
-from fastapi import File, UploadFile
-
-from fastapi.logger import logger
 
 
 def init():
@@ -12,8 +9,7 @@ def init():
     """
 
     # Placeholder init code. Replace the sleep with check for model files required etc...
-    logger.debug('Successful init of ImageShapeMicroservice')
-
+    return True
 
 def predict(image_file_name):
     """
@@ -22,7 +18,7 @@ def predict(image_file_name):
     with the image as an input.
     """
 
-    image = Image.open('/app/src/images/'+image_file_name)
+    image = Image.open('/app/images/'+image_file_name)
 
     width, height = image.size
 

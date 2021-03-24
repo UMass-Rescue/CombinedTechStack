@@ -1,0 +1,9 @@
+pillow
+requests
+rq
+redis
+scipy
+numpy
+torch
+torchvision
+opencv-python

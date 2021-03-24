@@ -1,9 +1,7 @@
 from matplotlib import pyplot
 from matplotlib.patches import Rectangle
 from mtcnn.mtcnn import MTCNN
-from src.server.dependency import logger
 from PIL import Image
-from fastapi import File, UploadFile
 
 
 """
@@ -22,8 +20,7 @@ def init():
     model needs have been created, and if not then you should create/fetch them.
     """
 
-    logger.debug('Nothing to init...')
-
+    return True
 
 def predict(image_file_name):
     """
@@ -32,7 +29,7 @@ def predict(image_file_name):
     with the image as an input.
     """
 
-    image = Image.open('/app/src/images/'+image_file_name)
+    image = Image.open('/app/images/'+image_file_name)
 
     def draw_image_with_boxes(result_list):
         # load the image
@@ -60,9 +57,8 @@ def predict(image_file_name):
     faces = detector.detect_faces(pixels)
 
     # For debug, un comment this method to generate image showing faces detected
-    draw_image_with_boxes(faces)
+    # draw_image_with_boxes(faces)
 
-    # logger.debug(faces)
 
     return {
         'classes': ['number_faces'],  

@@ -1,6 +1,5 @@
 from PIL import Image
 from PIL.ImageStat import Stat
-from fastapi import File, UploadFile
 import time
 
 
@@ -21,7 +20,7 @@ def predict(image_file_name):
     with the image as an input.
     """
 
-    image = Image.open('/app/src/images/'+image_file_name)
+    image = Image.open('/app/images/'+image_file_name)
     stat = Stat(image)
     av_r = stat.mean[0]
     av_g = stat.mean[1]

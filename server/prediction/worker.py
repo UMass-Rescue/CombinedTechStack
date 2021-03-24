@@ -4,16 +4,12 @@ from model.info import model_name
 from rq import Queue, Worker, Connection
 from model.model import init
 from utility import main
-import sys
-import os
 
 
 redis = Redis(host='redis', port=6379)
 
 if __name__ == '__main__':
     print('Starting Worker')
-    sys.path.insert(0, '/app')
-    print(os.getcwd())
     unique_worker_id = str(uuid.uuid4())
     init()  # Ensure that the model is ready to receive predictions.
     registration_result = main.register_to_server()  # Add this model to the server's list of available models.
@@ -22,6 +18,6 @@ if __name__ == '__main__':
     with Connection(redis):
         queue = Queue(model_name)
         worker = Worker([queue], connection=redis, name='Worker'+model_name+'---'+unique_worker_id)
-        worker.work(logging_level='DEBUG')
+        worker.work()
     print('Ending Worker')
 

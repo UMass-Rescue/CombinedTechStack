@@ -31,13 +31,11 @@ def register_to_server():
 
 
 def predict_image(image_hash, image_file_name):
-
-    # try:
-    requests.get('http://host.docker.internal:5000')
-    result = predict(image_file_name)  # Create prediction on model
-    # except (e):
+    try:
+        result = predict(image_file_name)  # Create prediction on model
+    except:
         # Do not send prediction results to server on crash. 
-        # return '[Error] Model Prediction Crash. Model: [' + model_name +'] Hash:[' + image_hash + ']' 
+        return '[Error] Model Prediction Crash. Model: [' + model_name +'] Hash:[' + image_hash + ']' 
 
     try:  # Send prediction results back to server
         headers = {

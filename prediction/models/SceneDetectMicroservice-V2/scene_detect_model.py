@@ -26,7 +26,7 @@ class SceneDetectionModel:
     WIDERESNET18_FILE_NAME = 'wideresnet.py'
     WIDERESNET18_SCENE_ATTRIBUTES_FILE_NAME = 'W_sceneattribute_wideresnet18.npy'
     WIDERESNET18_TAR_FILE_NAME = 'wideresnet18_places365.pth.tar'
-    MODEL_DIRECTORY = 'src/model/SceneDetect/'
+    MODEL_DIRECTORY = 'model/SceneDetect/'
 
     # Default constants
     IMG_WIDTH = 224

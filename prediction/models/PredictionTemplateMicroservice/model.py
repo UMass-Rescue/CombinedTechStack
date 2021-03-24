@@ -21,10 +21,10 @@ def predict(image_file_name):
     with the image as an input.
 
     Note: All images are stored in a folder named 'images' one directory back.
-    You can access it with '../images/<image_file_name>' 
+    You can access it with '/app/images/<image_file_name>' 
     """
 
-    image = Image.open('../images/'+image_file_name)
+    image = Image.open('/app/images/'+image_file_name)
 
     return {
         'classes': ['isGreen', 'isRed'],  # List every class in the classifier

@@ -4,22 +4,20 @@ services:
   #           Client + Server
   # ------------------------------------------------------------------------------
 
-  # client:
-  #   container_name: client
-  #   stdin_open: true
-  #   build:
-  #     context: client
-  #     dockerfile: Dockerfile
-  #   volumes:
-  #     - './client/:/app'
-  #     - '/app/node_modules'
-  #   ports:
-  #     - 3000:3000
-  #   environment:
-  #     - CHOKIDAR_USEPOLLING=true
+  client:
+    container_name: client
+    build:
+      context: client
+      dockerfile: Dockerfile
+    volumes:
+      - './client/:/app'
+      - '/app/node_modules'
+    ports:
+      - 3000:3000
+    environment:
+      - CHOKIDAR_USEPOLLING=true
 
   server:
-    stdin_open: true
     container_name: server
     build:
       context: server
@@ -41,8 +39,8 @@ services:
     container_name: ${PREDICTION_TEMPLATE}_worker
     command: python3 worker.py
     build:
-      context: prediction
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: server/prediction/Dockerfile
       args:
         - MODEL_NAME=${PREDICTION_TEMPLATE}
     volumes:
@@ -55,6 +53,101 @@ services:
     depends_on:
       - redis
       - server
+
+  worker_average_pixel:
+    container_name: ${PREDICTION_AVERAGE_PIXEL}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_AVERAGE_PIXEL}
+    volumes:
+      - ./prediction/models/${PREDICTION_AVERAGE_PIXEL}:/app/model
+      - prediction_images:/app/images
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
+
+  worker_face_detect:
+    container_name: ${PREDICTION_FACE_DETECT}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_FACE_DETECT}
+    volumes:
+      - ./prediction/models/${PREDICTION_FACE_DETECT}:/app/model
+      - prediction_images:/app/images
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
+
+  worker_image_hash:
+    container_name: ${PREDICTION_IMAGE_HASH}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_IMAGE_HASH}
+    volumes:
+      - ./prediction/models/${PREDICTION_IMAGE_HASH}:/app/model
+      - prediction_images:/app/images
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
+
+  worker_image_shape:
+    container_name: ${PREDICTION_IMAGE_SHAPE}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_IMAGE_SHAPE}
+    volumes:
+      - ./prediction/models/${PREDICTION_IMAGE_SHAPE}:/app/model
+      - prediction_images:/app/images
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
+
+  worker_scene_detect:
+    container_name: ${PREDICTION_SCENE_DETECT}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_SCENE_DETECT}
+    volumes:
+      - ./prediction/models/${PREDICTION_SCENE_DETECT}:/app/model
+      - prediction_images:/app/images
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server                          
 
   # ------------------------------------------------------------------------------
   #           Training Microservices

@@ -1,7 +1,6 @@
 import hashlib
 import imagehash
 from PIL import Image
-from fastapi import File, UploadFile
 import time
 
 
@@ -21,11 +20,11 @@ def predict(image_file_name):
     with the image as an input.
     """
 
-    file = Image.open('/app/src/images/'+image_file_name)
+    image = Image.open('/app/images/'+image_file_name)
 
-    md5 = hashlib.md5(file.tobytes()).hexdigest()
-    sha1 = hashlib.sha1(file.tobytes()).hexdigest()
-    perceptual = str(imagehash.phash(file))
+    md5 = hashlib.md5(image.tobytes()).hexdigest()
+    sha1 = hashlib.sha1(image.tobytes()).hexdigest()
+    perceptual = str(imagehash.phash(image))
 
     return {
         'classes': ['md5', 'sha1', 'perceptual'],  # List every class in the classifier
