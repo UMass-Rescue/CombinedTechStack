@@ -19,9 +19,12 @@ def predict(image_file_name):
     Interface method between model and server. This signature must not be
     changed and your model must be able to predict given a file-like object
     with the image as an input.
+
+    Note: All images are stored in a folder named 'images' one directory back.
+    You can access it with '../images/<image_file_name>' 
     """
 
-    image = Image.open('/app/src/images/'+image_file_name)
+    image = Image.open('../images/'+image_file_name)
 
     return {
         'classes': ['isGreen', 'isRed'],  # List every class in the classifier

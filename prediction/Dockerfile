@@ -2,8 +2,9 @@ FROM python:3.7
 
 WORKDIR /app
 
-COPY microservice/main.py /app
 COPY microservice/worker.py /app
+COPY microservice/utility/* /app/utility/
+
 
 # Load the model name from the docker-compose file
 ARG MODEL_NAME 

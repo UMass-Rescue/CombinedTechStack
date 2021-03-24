@@ -54,6 +54,7 @@ services:
       - SERVER_SOCKET=${SERVER_SOCKET}
     depends_on:
       - redis
+      - server
 
   # ------------------------------------------------------------------------------
   #           Training Microservices

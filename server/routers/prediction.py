@@ -13,12 +13,12 @@ from fastapi import File, UploadFile, HTTPException, Depends, APIRouter
 from rq.job import Job
 
 from routers.auth import current_user_investigator
-from dependency import logger, MicroserviceConnection, settings, prediction_queue, redis, User, pool, UniversalMLImage
+from dependency import logger, MicroserviceConnection, settings, redis, User, pool, UniversalMLImage
 from db_connection import add_image_db, add_user_to_image, get_images_from_user_db, get_image_by_md5_hash_db, \
     get_api_key_by_key_db, add_filename_to_image, add_model_to_image_db, get_models_db, add_model_db
-from typing import (
-    List
-)
+from typing import List
+from rq import Queue
+
 
 model_router = APIRouter()
 
@@ -122,21 +122,9 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
         shutil.copyfileobj(file, stored_image)
 
         for model in models:
-            model_socket = settings.available_models[model]
-            # try:
-            #     logger.debug('Creating Prediction Request. Hash: ' + hash_md5 + ' Model: ' + model)
-            #     request = requests.post(
-            #         model_socket + '/predict',
-            #         params={'image_md5_hash': hash_md5, 'image_file_name': new_filename}
-            #     )
-            #     request.raise_for_status()  # Ensure prediction job hasn't errored.
-            # except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-            #     logger.error('Fatal error when creating prediction request. Hash: "' + hash_md5 + '" Model: ' + model)
-
-            # From microservice
-            # dependency.prediction_queue.enqueue(
-            #     predict_image, image_md5_hash, image_file_name, os.getenv('SERVER_PORT'), job_id=image_md5_hash
-            # )
+            dependency.prediction_queues[model].enqueue(
+                'utility.main.predict_image', hash_md5, new_filename, job_id=hash_md5+model
+            )
 
 
     return {"images": [hashes_md5[key] for key in hashes_md5]}
@@ -337,20 +325,11 @@ def register_model(model: MicroserviceConnection):
             'detail': 'Model has already been registered.'
         }
 
-    # Ensure that we can connect back to model before adding it
-    try:
-        r = requests.get(model.socket + '/status')
-        r.raise_for_status()
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-        return {
-            "status": "failure",
-            'model': model.name,
-            'detail': 'Unable to establish successful connection to model.'
-        }
 
-    # Register model to server and create thread to ensure model is responsive
-    settings.available_models[model.name] = model.socket
-    pool.submit(ping_model, model.name)
+    # Register model as available
+    settings.available_models.add(model.name)
+
+    dependency.prediction_queues[model.name] = Queue(model.name, connection=redis)
 
     logger.debug("Model " + model.name + " successfully registered to server.")
 
