@@ -18,6 +18,7 @@ from db_connection import add_image_db, add_user_to_image, get_images_from_user_
     get_api_key_by_key_db, add_filename_to_image, add_model_to_image_db, get_models_db, add_model_db
 from typing import List
 from rq import Queue
+import uuid
 
 
 model_router = APIRouter()
@@ -123,7 +124,7 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
 
         for model in models:
             dependency.prediction_queues[model].enqueue(
-                'utility.main.predict_image', hash_md5, new_filename, job_id=hash_md5+model
+                'utility.main.predict_image', hash_md5, new_filename, job_id=hash_md5+model+str(uuid.uuid4())
             )
 
 
