@@ -1,5 +1,7 @@
 import time
 import os
+import pathlib
+import datetime
 
 from fastapi.logger import logger
 
@@ -15,7 +17,7 @@ from routers.prediction import model_router
 from routers.training import training_router
 
 
-# App instance used by the server
+# App instance used by the server 
 app = FastAPI()
 
 # --------------------------------------------------------------------------
@@ -114,33 +116,54 @@ async def root():
 
 
 def delete_unused_files():
+    """
+    Scheduled thread that will check all uploaded images every hour and delete them if they
+    have not been accessed recently.
+    """
 
-    current_time = time.time()
+    current_time = datetime.datetime.now()
 
-    for f in os.listdir('./prediction_images/'):
-        creation_time = os.path.getctime(f)
-        if (current_time - creation_time) // (24 * 3600) >= 1:  # Check if file is older than 1 day
-            os.remove(f) # Delete files older than 1 day
+    for file_name in os.listdir('./prediction_images/'):
 
-    for _ in range(60*60):  # Delay for an hour
-        time.sleep(1)
+        file_creation_time = datetime.datetime.fromtimestamp(
+            pathlib.Path('./prediction_images/' + file_name).stat().st_ctime
+        )
+
+        time_since_file_creation = file_creation_time - current_time
+
+        if time_since_file_creation.hours > 24:
+            os.remove('./prediction_images/' + file_name)
+            logger.debug('Time Difference in Hours' + (time_since_file_creation.hours))
+            logger.debug('[Automated Deletion Thread] Removed Image File [' + file_name + ']')
+
+
+    # Delay for an hour between deletion checks
+    for _ in range(60*60):  
+        if not dependency.shutdown:  # Check between increments to stop hanging on shutdown
+            time.sleep(1) 
+        else:
+            break
+
+    if dependency.shutdown:
+        logger.debug('Image Deletion Thread Terminated')
 
 
 
 @app.on_event('startup')
 def on_startup():
     """
-    On server startup, schedule 
-    """
-    pool.submit()
+    On server startup, schedule
+    """ 
+
+    logger.debug('Starting image auto-deletion service.')
+    pool.submit(delete_unused_files) 
 
 
 
-@app.on_event('shutdown')
+@app.on_event('shutdown') 
 def on_shutdown():
     """
     On server shutdown, stop all background model pinging threads.
     """
-
-    pool.shutdown()  # Clear any non-processed jobs from thread queue
-
+    dependency.shutdown = True
+    pool.shutdown(wait=True)

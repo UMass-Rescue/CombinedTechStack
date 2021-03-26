@@ -53,6 +53,7 @@ settings = Settings()
 
 pool = ThreadPoolExecutor(10)
 WAIT_TIME = 10
+shutdown = False
 
 # Redis Queue for model-prediction jobs
 redis = rd.Redis(host="redis", port=6379)

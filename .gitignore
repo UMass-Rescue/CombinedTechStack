@@ -4,3 +4,4 @@ __pycache__*
 training/datasets/mnist_fashion
 env/
 venv/
+.vscode/

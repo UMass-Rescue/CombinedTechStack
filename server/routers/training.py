@@ -359,7 +359,11 @@ def ping_dataset(dataset_name):
                 settings.available_datasets[dataset_name] + '/status')
             r.raise_for_status()
             for increment in range(dependency.WAIT_TIME):
-                time.sleep(1)
+                if not dependency.shutdown:  # Check between increments to stop hanging on shutdown
+                    time.sleep(1)
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
             kill_dataset()
             return
+
+    if dependency.shutdown:
+        logger.debug("Dataset [" + dataset_name + "] Healthcheck Thread Terminated.")
