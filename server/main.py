@@ -1,4 +1,5 @@
 import time
+import os
 
 from fastapi.logger import logger
 
@@ -112,15 +113,34 @@ async def root():
     }
 
 
+def delete_unused_files():
+
+    current_time = time.time()
+
+    for f in os.listdir('./prediction_images/'):
+        creation_time = os.path.getctime(f)
+        if (current_time - creation_time) // (24 * 3600) >= 1:  # Check if file is older than 1 day
+            os.remove(f) # Delete files older than 1 day
+
+    for _ in range(60*60):  # Delay for an hour
+        time.sleep(1)
+
+
+
+@app.on_event('startup')
+def on_startup():
+    """
+    On server startup, schedule 
+    """
+    pool.submit()
+
+
+
 @app.on_event('shutdown')
 def on_shutdown():
     """
-    On server shutdown, stop all background model pinging threads, as well as clear
-    the redis model prediction queue. This is necessary to prevent the workers from
-    spawning multiple instances on restart.
+    On server shutdown, stop all background model pinging threads.
     """
 
-    dependency.shutdown = True  # Send shutdown signal to threads
     pool.shutdown()  # Clear any non-processed jobs from thread queue
-    dependency.prediction_queue.empty()  # Removes all pending jobs from the queue
 

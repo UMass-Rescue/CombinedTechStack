@@ -310,15 +310,6 @@ def register_model(model: MicroserviceConnection):
     :return: {'status': 'success'} if registration successful else {'status': 'failure'}
     """
 
-    # Do not accept calls if server is in process of shutting down
-    if dependency.shutdown:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                'status': 'failure',
-                'detail': 'Server is shutting down. Unable to complete new model registration.'
-            }
-        )
 
     # Do not add duplicates of running models to server
     if model.name in settings.available_models:

@@ -40,7 +40,7 @@ services:
     command: python3 worker.py
     build:
       context: .
-      dockerfile: server/prediction/Dockerfile
+      dockerfile: server/prediction_worker/Dockerfile
       args:
         - MODEL_NAME=${PREDICTION_TEMPLATE}
     volumes:
@@ -59,7 +59,7 @@ services:
     command: python3 worker.py
     build:
       context: .
-      dockerfile: server/prediction/Dockerfile
+      dockerfile: server/prediction_worker/Dockerfile
       args:
         - MODEL_NAME=${PREDICTION_AVERAGE_PIXEL}
     volumes:
@@ -78,7 +78,7 @@ services:
     command: python3 worker.py
     build:
       context: .
-      dockerfile: server/prediction/Dockerfile
+      dockerfile: server/prediction_worker/Dockerfile
       args:
         - MODEL_NAME=${PREDICTION_FACE_DETECT}
     volumes:
@@ -97,7 +97,7 @@ services:
     command: python3 worker.py
     build:
       context: .
-      dockerfile: server/prediction/Dockerfile
+      dockerfile: server/prediction_worker/Dockerfile
       args:
         - MODEL_NAME=${PREDICTION_IMAGE_HASH}
     volumes:
@@ -116,7 +116,7 @@ services:
     command: python3 worker.py
     build:
       context: .
-      dockerfile: server/prediction/Dockerfile
+      dockerfile: server/prediction_worker/Dockerfile
       args:
         - MODEL_NAME=${PREDICTION_IMAGE_SHAPE}
     volumes:
@@ -135,7 +135,7 @@ services:
     command: python3 worker.py
     build:
       context: .
-      dockerfile: server/prediction/Dockerfile
+      dockerfile: server/prediction_worker/Dockerfile
       args:
         - MODEL_NAME=${PREDICTION_SCENE_DETECT}
     volumes:

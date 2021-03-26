@@ -53,7 +53,6 @@ settings = Settings()
 
 pool = ThreadPoolExecutor(10)
 WAIT_TIME = 10
-shutdown = False  # Signal used to shutdown running threads on restart
 
 # Redis Queue for model-prediction jobs
 redis = rd.Redis(host="redis", port=6379)

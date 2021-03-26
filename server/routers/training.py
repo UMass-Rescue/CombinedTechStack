@@ -303,15 +303,7 @@ def register_dataset(dataset: MicroserviceConnection):
     :param dataset: MicroserviceConnection object with name and port of dataset
     :return: {'status': 'success'} if saving is successful, else {'status': 'failure'}
     """
-    # Do not accept calls if server is in process of shutting down
-    if dependency.shutdown:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                'status': 'failure',
-                'detail': 'Server is shutting down. Unable to complete new dataset registration.'
-            }
-        )
+
 
     # Do not add duplicates of running datasets to server
     if dataset.name in settings.available_datasets:
@@ -361,17 +353,13 @@ def ping_dataset(dataset_name):
         dataset_is_alive = False
         logger.debug("Dataset " + dataset_name + " is not responsive. Removing from available services...")
 
-    while dataset_is_alive and not dependency.shutdown:
+    while dataset_is_alive:
         try:
             r = requests.get(
                 settings.available_datasets[dataset_name] + '/status')
             r.raise_for_status()
             for increment in range(dependency.WAIT_TIME):
-                if not dependency.shutdown:  # Check between increments to stop hanging on shutdown
-                    time.sleep(1)
+                time.sleep(1)
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
             kill_dataset()
             return
-
-    if dependency.shutdown:
-        logger.debug("Dataset [" + dataset_name + "] Healthcheck Thread Terminated.")
