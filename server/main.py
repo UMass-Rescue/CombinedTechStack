@@ -121,7 +121,7 @@ def delete_unused_files():
     have not been accessed recently.
     """
 
-    current_time = datetime.datetime.now()
+    current_time = datetime.timedelta(hours=-4) + datetime.datetime.now()
 
     for file_name in os.listdir('./prediction_images/'):
 
@@ -129,9 +129,9 @@ def delete_unused_files():
             pathlib.Path('./prediction_images/' + file_name).stat().st_ctime
         )
 
-        time_since_file_creation = file_creation_time - current_time
+        time_since_file_creation = current_time - file_creation_time
 
-        if time_since_file_creation.hours > 24:
+        if time_since_file_creation.days >= 1:
             os.remove('./prediction_images/' + file_name)
             logger.debug('Time Difference in Hours' + (time_since_file_creation.hours))
             logger.debug('[Automated Deletion Thread] Removed Image File [' + file_name + ']')
