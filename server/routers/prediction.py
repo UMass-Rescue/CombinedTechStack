@@ -13,12 +13,13 @@ from fastapi import File, UploadFile, HTTPException, Depends, APIRouter
 from rq.job import Job
 
 from routers.auth import current_user_investigator
-from dependency import logger, MicroserviceConnection, settings, prediction_queue, redis, User, pool, UniversalMLImage
+from dependency import logger, MicroserviceConnection, settings, redis, User, pool, UniversalMLImage
 from db_connection import add_image_db, add_user_to_image, get_images_from_user_db, get_image_by_md5_hash_db, \
     get_api_key_by_key_db, add_filename_to_image, add_model_to_image_db, get_models_db, add_model_db
-from typing import (
-    List
-)
+from typing import List
+from rq import Queue
+import uuid
+
 
 model_router = APIRouter()
 
@@ -122,16 +123,10 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
         shutil.copyfileobj(file, stored_image)
 
         for model in models:
-            model_socket = settings.available_models[model]
-            try:
-                logger.debug('Creating Prediction Request. Hash: ' + hash_md5 + ' Model: ' + model)
-                request = requests.post(
-                    model_socket + '/predict',
-                    params={'image_md5_hash': hash_md5, 'image_file_name': new_filename}
-                )
-                request.raise_for_status()  # Ensure prediction job hasn't errored.
-            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-                logger.error('Fatal error when creating prediction request. Hash: "' + hash_md5 + '" Model: ' + model)
+            dependency.prediction_queues[model].enqueue(
+                'utility.main.predict_image', hash_md5, new_filename, job_id=hash_md5+model+str(uuid.uuid4())
+            )
+
 
     return {"images": [hashes_md5[key] for key in hashes_md5]}
 
@@ -149,12 +144,14 @@ async def get_jobs(md5_hashes: List[str]):
     if not md5_hashes:
         return []
 
-    for md5_hash in md5_hashes:
+    # If there are any pending predictions, alert user and return existing ones
+    # Since job_id is a composite hash+model, we must loop and find all jobs that have the
+    # hash we want to find. We must get all running and pending jobs to return the correct value
+    all_jobs = set()
+    for model in settings.available_models:
+        all_jobs.update(StartedJobRegistry(model, connection=redis).get_job_ids() + dependency.prediction_queues[model].job_ids)
 
-        # If there are any pending predictions, alert user and return existing ones
-        # Since job_id is a composite hash+model, we must loop and find all jobs that have the
-        # hash we want to find. We must get all running and pending jobs to return the correct value
-        all_jobs = StartedJobRegistry('model_prediction', connection=redis).get_job_ids() + prediction_queue.job_ids
+    for md5_hash in md5_hashes:
 
         image = get_image_by_md5_hash_db(md5_hash)  # Get image object
         found_pending_job = False
@@ -313,15 +310,6 @@ def register_model(model: MicroserviceConnection):
     :return: {'status': 'success'} if registration successful else {'status': 'failure'}
     """
 
-    # Do not accept calls if server is in process of shutting down
-    if dependency.shutdown:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                'status': 'failure',
-                'detail': 'Server is shutting down. Unable to complete new model registration.'
-            }
-        )
 
     # Do not add duplicates of running models to server
     if model.name in settings.available_models:
@@ -331,20 +319,10 @@ def register_model(model: MicroserviceConnection):
             'detail': 'Model has already been registered.'
         }
 
-    # Ensure that we can connect back to model before adding it
-    try:
-        r = requests.get(model.socket + '/status')
-        r.raise_for_status()
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-        return {
-            "status": "failure",
-            'model': model.name,
-            'detail': 'Unable to establish successful connection to model.'
-        }
 
-    # Register model to server and create thread to ensure model is responsive
-    settings.available_models[model.name] = model.socket
-    pool.submit(ping_model, model.name)
+    # Register model as available and add its queue
+    settings.available_models.add(model.name)
+    dependency.prediction_queues[model.name] = Queue(model.name, connection=redis)
 
     logger.debug("Model " + model.name + " successfully registered to server.")
 
@@ -373,34 +351,3 @@ def receive_prediction_results(model_prediction_result: dependency.ModelPredicti
         image_object = get_image_by_md5_hash_db(model_prediction_result.image_hash)
         add_model_to_image_db(image_object, model_prediction_result.model_name, model_result)
         add_model_db(model_prediction_result.model_name, model_classes)
-
-
-def ping_model(model_name):
-    """
-    Periodically ping a model's service to make sure that it is active. If it's not, remove the model from the
-    available_models BaseSetting in dependency.py
-
-    :param model_name: Name of model to ping. This is the name the model registered to the server with.
-    """
-
-    model_is_alive = True
-
-    def kill_model():
-        settings.available_models.pop(model_name)
-        nonlocal model_is_alive
-        model_is_alive = False
-        logger.debug("Model " + model_name + " is not responsive. Removing the model from available services...")
-
-    while model_is_alive and not dependency.shutdown:
-        try:
-            r = requests.get('http://host.docker.internal:' + str(settings.available_models[model_name]) + '/status')
-            r.raise_for_status()
-            for increment in range(dependency.WAIT_TIME):
-                if not dependency.shutdown:  # Check between increments to stop hanging on shutdown
-                    time.sleep(1)
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-            kill_model()
-            return
-
-    if dependency.shutdown:
-        logger.debug("Model [" + model_name + "] Healthcheck Thread Terminated.")

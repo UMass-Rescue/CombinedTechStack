@@ -1,0 +1,8 @@
+pillow
+requests
+rq
+redis
+mtcnn
+matplotlib
+opencv-python-headless
+tensorflow

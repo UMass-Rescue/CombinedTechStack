@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     BaseSettings used to hold available models and datasets for training and prediction.
     """
 
-    available_models = {}
+    available_models = set()
     available_datasets = {}
 
 
@@ -53,12 +53,11 @@ settings = Settings()
 
 pool = ThreadPoolExecutor(10)
 WAIT_TIME = 10
-shutdown = False  # Signal used to shutdown running threads on restart
+shutdown = False
 
 # Redis Queue for model-prediction jobs
 redis = rd.Redis(host="redis", port=6379)
-prediction_queue = Queue("model_prediction", connection=redis)
-
+prediction_queues = {}
 
 class UniversalMLImage(BaseModel):
     """
@@ -80,7 +79,7 @@ class MicroserviceConnection(BaseModel):
     """
 
     name: str = Field(alias="modelName")
-    socket: str = Field(alias="modelSocket")
+    socket: Optional[str] = Field(alias="modelSocket")
 
     class Config:
         allow_population_by_field_name = True

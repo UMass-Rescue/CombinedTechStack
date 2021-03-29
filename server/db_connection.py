@@ -187,10 +187,14 @@ def add_model_to_image_db(image: UniversalMLImage, model_name, result):
     :param result: JSON results of the training
     """
 
-    new_metadata = [list(image.dict().values()), model_name, result]
+    new_metadata = [list(image.dict()['models'].values()), model_name, result] + image.file_names
+    metadata_str = json.dumps(new_metadata)
+    for char_to_replace in ['"', "'", "\\", '[', ']', '{', '}']:
+        metadata_str = metadata_str.replace(char_to_replace, '')
+
     image_collection.update_one({'hash_md5': image.hash_md5}, {'$set': {
         'models.' + model_name: result,
-        'metadata': json.dumps(new_metadata)
+        'metadata': metadata_str
     }})
 
 

@@ -13,7 +13,6 @@ python-jose[cryptography]
 passlib[bcrypt]
 Pillow
 imagehash
-aiofiles
 Sphinx
 sphinx_rtd_theme
 glob2

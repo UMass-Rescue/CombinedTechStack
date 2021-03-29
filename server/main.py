@@ -1,4 +1,7 @@
 import time
+import os
+import pathlib
+import datetime
 
 from fastapi.logger import logger
 
@@ -14,7 +17,7 @@ from routers.prediction import model_router
 from routers.training import training_router
 
 
-# App instance used by the server
+# App instance used by the server 
 app = FastAPI()
 
 # --------------------------------------------------------------------------
@@ -112,15 +115,53 @@ async def root():
     }
 
 
-@app.on_event('shutdown')
+def delete_unused_files():
+    """
+    Scheduled thread that will check all uploaded images every hour and delete them if they
+    have not been accessed recently.
+    """
+
+    current_time = datetime.timedelta(hours=-4) + datetime.datetime.now()
+
+    for file_name in os.listdir('./prediction_images/'):
+
+        file_creation_time = datetime.datetime.fromtimestamp(
+            pathlib.Path('./prediction_images/' + file_name).stat().st_ctime
+        )
+
+        time_since_file_creation = current_time - file_creation_time
+
+        if time_since_file_creation.days >= 1:
+            os.remove('./prediction_images/' + file_name)
+            logger.debug('[Automated Deletion Thread] Removed Image File [' + file_name + ']')
+
+
+    # Delay for an hour between deletion checks
+    for _ in range(60*60):  
+        if not dependency.shutdown:  # Check between increments to stop hanging on shutdown
+            time.sleep(1) 
+        else:
+            break
+
+    if dependency.shutdown:
+        logger.debug('Image Deletion Thread Terminated')
+
+
+
+@app.on_event('startup')
+def on_startup():
+    """
+    On server startup, schedule
+    """ 
+
+    pool.submit(delete_unused_files) 
+
+
+
+@app.on_event('shutdown') 
 def on_shutdown():
     """
-    On server shutdown, stop all background model pinging threads, as well as clear
-    the redis model prediction queue. This is necessary to prevent the workers from
-    spawning multiple instances on restart.
+    On server shutdown, stop all background model pinging threads.
     """
-
-    dependency.shutdown = True  # Send shutdown signal to threads
-    pool.shutdown()  # Clear any non-processed jobs from thread queue
-    dependency.prediction_queue.empty()  # Removes all pending jobs from the queue
-
+    dependency.shutdown = True
+    pool.shutdown(wait=True)
