@@ -29,11 +29,11 @@ def predict(image_file_name):
     with the image as an input.
     """
 
-    image = Image.open('/app/images/'+image_file_name)
+    # image = Image.open('/app/images/'+image_file_name)
 
     def draw_image_with_boxes(result_list):
         # load the image
-        data = pyplot.imread(image)
+        data = pyplot.imread('/app/images/'+image_file_name)
         # plot the image
         pyplot.imshow(data)
         # get the context for drawing boxes
@@ -49,7 +49,7 @@ def predict(image_file_name):
         # show the plot
         pyplot.savefig('src/image.jpg')
 
-    pixels = pyplot.imread(image)
+    pixels = pyplot.imread('/app/images/'+image_file_name)
 
     # create the detector, using default weights
     detector = MTCNN()

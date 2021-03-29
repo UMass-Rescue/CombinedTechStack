@@ -120,7 +120,7 @@ class SceneDetectionModel:
         # imported here since this model file may not be present in the beginning
         # and has been downloaded right before this
         # makes the model ready to run the forward pass
-        from src.model.SceneDetect import wideresnet
+        from model.SceneDetect import wideresnet
         model = wideresnet.resnet18(num_classes=365)
         checkpoint = torch.load(os.path.join(self.MODEL_DIRECTORY, self.WIDERESNET18_TAR_FILE_NAME),
                                 map_location=lambda storage, loc: storage)
