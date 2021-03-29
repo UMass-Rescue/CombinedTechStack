@@ -133,7 +133,6 @@ def delete_unused_files():
 
         if time_since_file_creation.days >= 1:
             os.remove('./prediction_images/' + file_name)
-            logger.debug('Time Difference in Hours' + (time_since_file_creation.hours))
             logger.debug('[Automated Deletion Thread] Removed Image File [' + file_name + ']')
 
 
@@ -155,7 +154,6 @@ def on_startup():
     On server startup, schedule
     """ 
 
-    logger.debug('Starting image auto-deletion service.')
     pool.submit(delete_unused_files) 
 
 

@@ -1,7 +1,9 @@
 import os
 import requests
 from model.model import predict, init
-from model.info import model_name, model_tags
+from model.config import model_name, model_tags
+from worker import shutdown
+import time
 
 
 API_KEY = os.getenv('API_KEY')
@@ -12,30 +14,37 @@ def register_to_server():
     Registers a prediction model to the server. This will automatically register the correct name
     for the model.
     """
-    try:  # Register to server
-        headers = {'api_key': API_KEY}
-        r = requests.post(
-            SERVER_SOCKET + '/model/register',
-            headers=headers,
-            json={'name': model_name}
-        )
-        r.raise_for_status()
-        if r.status_code != 200:
-            return '[Error] Model Startup + Registration Unable to Authenticate. Model: [' + model_name +']'
-        else:
-            return 'Model Startup + Registration Successful. Model: [' + model_name +']'
+    while not shutdown:
+        try:  # Register to server
+            headers = {'api_key': API_KEY}
+            r = requests.post(
+                SERVER_SOCKET + '/model/register',
+                headers=headers,
+                json={'name': model_name}
+            )
+            r.raise_for_status()
+            if r.status_code != 200:
+                print('[Error] Model Registration Unable to Authenticate to Server. Model: [' + model_name +']')
 
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-        return '[Error] Model Startup + Registration Failure. Model: [' + model_name +']'
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
+            print('[Error] Model Registration Unable to Connect to Server. Model: [' + model_name +']')
 
+        # After sending request, we will wait before re-registering to server.
+        sleepTimeInSeconds = 10
+        while sleepTimeInSeconds > 0 and not shutdown:
+            time.sleep(1)
+            sleepTimeInSeconds -= 1
+
+    print('[Worker] Registration Thread Shutting down.')
 
 
 def predict_image(image_hash, image_file_name):
-    try:
-        result = predict(image_file_name)  # Create prediction on model
-    except:
-        # Do not send prediction results to server on crash. 
-        return '[Error] Model Prediction Crash. Model: [' + model_name +'] Hash:[' + image_hash + ']' 
+    # try:
+    result = predict(image_file_name)  # Create prediction on model
+    # except:
+    #     # Do not send prediction results to server on crash. 
+    #     print('[Error] Model Prediction Crash. Model: [' + model_name + '] Hash:[' + image_hash + ']')
+    #     return
 
     try:  # Send prediction results back to server
         headers = {
