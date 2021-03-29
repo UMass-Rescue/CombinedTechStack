@@ -5,9 +5,9 @@ import time
 
 from fastapi.logger import logger
 
-from secrets import API_KEY
 from src.server import dependency
 
+API_KEY = os.getenv('API_KEY')
 
 def register_model_to_server(server_port, dataset_port, dataset_name):
     """

@@ -2,7 +2,6 @@ import os
 import tempfile
 import shutil
 import requests
-from secrets import API_KEY
 
 from src.server.dependency import ModelData
 import tensorflow as tf
@@ -60,6 +59,8 @@ def train_model(training_id, model_data: ModelData):
         loss = history.history['loss']
         val_loss = history.history['val_loss']
         print('[Training] Completed training on model ID: ' + training_id)
+
+        API_KEY = os.getenv('API_KEY')
 
         # If we are saving the model, we must save it to folder, zip that folder,
         # and then send the zip file to the server via HTTP requests

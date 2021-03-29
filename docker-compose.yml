@@ -153,46 +153,48 @@ services:
   #           Training Microservices
   # ------------------------------------------------------------------------------
 
-  # mnist_fashion_dataset:
-  #   stdin_open: true
-  #   container_name: mnist_fashion_dataset
-  #   command: uvicorn src.server.main:app --host 0.0.0.0 --port 6006 --debug --reload-dir /app --log-level debug
-  #   build:
-  #     context: training/MNISTFashionMicroservice
-  #     dockerfile: Dockerfile
-  #   environment:
-  #     - GUNICORN_CMD_ARGS=--reload
-  #     - DATASET_LOCATION=${MNIST_FASHION_DATASET_LOCATION}
-  #     - SERVER_PORT=${SERVER_PORT}
-  #     - PORT=6006
-  #     - DATASET_NAME=mnist_fashion
-  #   volumes:
-  #     - ./training/MNISTFashionMicroservice/:/app
-  #     - mnist_fashion_dataset_vol:/app/src/dataset
-  #     - mnist_fashion_public_dataset_vol:/app/src/public_dataset
-  #   ports:
-  #     - 6006:6006
+  mnist_fashion_dataset:
+    stdin_open: true
+    container_name: mnist_fashion_dataset
+    command: uvicorn src.server.main:app --host 0.0.0.0 --port 6006 --debug --reload-dir /app --log-level debug
+    build:
+      context: training/MNISTFashionMicroservice
+      dockerfile: Dockerfile
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - DATASET_LOCATION=${MNIST_FASHION_DATASET_LOCATION}
+      - SERVER_PORT=${SERVER_PORT}
+      - PORT=6006
+      - DATASET_NAME=mnist_fashion
+      - API_KEY=${API_KEY_TRAINING}
+    volumes:
+      - ./training/MNISTFashionMicroservice/:/app
+      - mnist_fashion_dataset_vol:/app/src/dataset
+      - mnist_fashion_public_dataset_vol:/app/src/public_dataset
+    ports:
+      - 6006:6006
 
   # ------------------------------------------------------------------------------
   #           Training Microservice Workers
   # ------------------------------------------------------------------------------
 
-  # mnist_fashion_dataset_worker:
-  #   container_name: mnist_fashion_dataset_worker
-  #   command: python3 src/server/worker.py
-  #   build:
-  #     context: training/MNISTFashionMicroservice
-  #     dockerfile: Dockerfile
-  #   volumes:
-  #     - ./training/MNISTFashionMicroservice/:/app
-  #     - mnist_fashion_dataset_vol:/app/src/dataset
-  #     - mnist_fashion_public_dataset_vol:/app/src/public_dataset
-  #   environment:
-  #     - GUNICORN_CMD_ARGS=--reload
-  #     - DATASET_NAME=mnist_fashion
-  #     - SERVER_PORT=${SERVER_PORT}
-  #   depends_on:
-  #     - redis
+  mnist_fashion_dataset_worker:
+    container_name: mnist_fashion_dataset_worker
+    command: python3 src/server/worker.py
+    build:
+      context: training/MNISTFashionMicroservice
+      dockerfile: Dockerfile
+    volumes:
+      - ./training/MNISTFashionMicroservice/:/app
+      - mnist_fashion_dataset_vol:/app/src/dataset
+      - mnist_fashion_public_dataset_vol:/app/src/public_dataset
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - DATASET_NAME=mnist_fashion
+      - SERVER_PORT=${SERVER_PORT}
+      - API_KEY=${API_KEY_TRAINING}
+    depends_on:
+      - redis
 
   # ------------------------------------------------------------------------------
   #           Shared Dependencies
