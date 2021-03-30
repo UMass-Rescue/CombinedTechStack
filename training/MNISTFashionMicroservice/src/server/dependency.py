@@ -1,6 +1,6 @@
 import logging
 from concurrent.futures.thread import ThreadPoolExecutor
-from typing import List
+from typing import List, Dict, Optional
 
 from pydantic import BaseSettings, BaseModel, Json
 from rq import Queue
@@ -17,11 +17,15 @@ class Settings(BaseSettings):
 class TrainingException(Exception):
     pass
 
+class KerasIdentifierModel(BaseModel):
+    class_name: str
+    config: Optional[Dict[str,str]]
+
 
 class ModelData(BaseModel):
     model_structure: str
-    loss_function: str
-    optimizer: str
+    loss_function: KerasIdentifierModel
+    optimizer: KerasIdentifierModel
     n_epochs: int
     seed: int = 123
     split: float = 0.2

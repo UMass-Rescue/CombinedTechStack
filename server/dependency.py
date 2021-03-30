@@ -1,7 +1,7 @@
 import logging
 from concurrent.futures.thread import ThreadPoolExecutor
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.security import APIKeyHeader
@@ -183,6 +183,13 @@ class CredentialException(Exception):
 # --------------------------------------------------------------------------------
 
 
+class KerasIdentifierModel(BaseModel):
+    """
+    LossFunction inside HTTP Request body (support only Tensorflow losses)
+    """
+    class_name: str
+    config: Optional[Dict[str,str]]
+
 class TrainingRequestHttpBody(BaseModel):
     """
     HTTP Request body received from python devtools when creating a training request for a dataset.
@@ -190,8 +197,8 @@ class TrainingRequestHttpBody(BaseModel):
 
     dataset: str
     model_structure: str  # Stringified JSON object of model structure
-    loss_function: str
-    optimizer: str
+    loss_function: KerasIdentifierModel
+    optimizer: KerasIdentifierModel
     n_epochs: int
     seed: int = 123
     split: float = 0.2
