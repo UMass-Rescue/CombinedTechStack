@@ -183,11 +183,19 @@ class CredentialException(Exception):
 # --------------------------------------------------------------------------------
 
 
-class KerasIdentifierModel(BaseModel):
+class LossFunction(BaseModel):
     """
     LossFunction inside HTTP Request body (support only Tensorflow losses)
     """
     class_name: str
+    config: Optional[Dict[str,str]]
+
+class OptimizerModel(BaseModel):
+    """
+    LossFunction inside HTTP Request body (support only Tensorflow losses)
+    """
+    class_name: List[str]
+    learning_rate: Optional[List[float]]
     config: Optional[Dict[str,str]]
 
 class TrainingRequestHttpBody(BaseModel):
@@ -197,8 +205,8 @@ class TrainingRequestHttpBody(BaseModel):
 
     dataset: str
     model_structure: str  # Stringified JSON object of model structure
-    loss_function: KerasIdentifierModel
-    optimizer: KerasIdentifierModel
+    loss_function: LossFunction
+    optimizer: OptimizerModel
     n_epochs: int
     seed: int = 123
     split: float = 0.2
@@ -223,6 +231,8 @@ class TrainingResult(BaseModel):
     validation_accuracy: float = -1
     training_loss: float = -1
     validation_loss: float = -1
+    optimizer_config: str = "{}"
+    loss_config: str = "{}"
 
 
 class TrainingResultHttpBody(BaseModel):

@@ -17,15 +17,19 @@ class Settings(BaseSettings):
 class TrainingException(Exception):
     pass
 
-class KerasIdentifierModel(BaseModel):
+class LossFunction(BaseModel):
     class_name: str
     config: Optional[Dict[str,str]]
 
+class OptimizerModel(BaseModel):
+    class_name: List[str]
+    learning_rate: Optional[List[float]]
+    config: Optional[Dict[str,str]]
 
 class ModelData(BaseModel):
     model_structure: str
-    loss_function: KerasIdentifierModel
-    optimizer: KerasIdentifierModel
+    loss_function: LossFunction
+    optimizer: OptimizerModel
     n_epochs: int
     seed: int = 123
     split: float = 0.2
