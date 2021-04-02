@@ -100,15 +100,19 @@ docker-compose up -d
 
 This template currently supports tuning for two hyperparameters which are "optimizer" (e.g. Adam, SDG, etc) and "learning rate" (e.g. 0.1, 0.01, etc).  
 
+The optimizer string name can be found in Keras official documents.
+
+Below is the example on how to specify multiple optimizers and learning rates during the API call for hyperparameter tuning.
+
 > [**Example**]
 > 
 >```json
 >'optimizer': {
->        "class_name": ["adam","SGD"],
->        "learning_rate": [0.1,0.01,0.001]
->    }
+>     "class_name": ["adam","SGD"],
+>     "learning_rate": [0.1,0.01,0.001]
+>},
 >```
 
-The function will return the best model (with the highest validation accuracy).
+The worker will return the best model (with the highest validation accuracy).
 
-There is a runnable example in Postman collection, the API called "Create Training Request".
+There is a runnable example in the Postman collection, the API called "Create Training Request".
