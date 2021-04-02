@@ -116,3 +116,9 @@ Below is the example on how to specify multiple optimizers and learning rates du
 The worker will return the best model (with the highest validation accuracy).
 
 There is a runnable example in the Postman collection, the API called "Create Training Request".
+
+
+### Worker logs
+
+Every time worker trains a model, it will record a log and save into the `\log` folder.  The filename will be `training_id.log`. 
+
