@@ -94,3 +94,21 @@ docker-compose up -d
 ```
 
 ---
+
+
+### Hyperparameter tuning
+
+This template currently supports tuning for two hyperparameters which are "optimizer" (e.g. Adam, SDG, etc) and "learning rate" (e.g. 0.1, 0.01, etc).  
+
+> [**Example**]
+> 
+>```json
+>'optimizer': {
+>        "class_name": ["adam","SGD"],
+>        "learning_rate": [0.1,0.01,0.001]
+>    }
+>```
+
+The function will return the best model (with the highest validation accuracy).
+
+There is a runnable example in Postman collection, the API called "Create Training Request".
