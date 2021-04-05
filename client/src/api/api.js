@@ -5,6 +5,7 @@ const api = {
     auth_status: '/auth/status',  // GET
     auth_profile: '/auth/profile', // GET
     model_predict_list: '/model/list', // GET
+    model_tag_list: '/model/tags', // GET
     model_predict: '/model/predict', // POST
     image_result: '/model/results', // GET
     model_result_list: '/model/all', // GET

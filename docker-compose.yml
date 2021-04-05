@@ -50,6 +50,7 @@ services:
     environment:
       - NAME=example_model
       - PORT=5010
+      - MODEL_TAGS=FAST,PICTURES,TEMPLATE
       - GUNICORN_CMD_ARGS=--reload
       - SERVER_PORT=${SERVER_PORT}
     ports:
@@ -66,6 +67,7 @@ services:
       - ./prediction/AveragePixelMicroservice:/app
     environment:
       - NAME=predict_average_pixel
+      - MODEL_TAGS=TEST,AVERAGE
       - PORT=5011
       - GUNICORN_CMD_ARGS=--reload
       - SERVER_PORT=${SERVER_PORT}
@@ -83,6 +85,7 @@ services:
       - ./prediction/FaceDetectMicroservice:/app
     environment:
       - NAME=face_detect
+      - MODEL_TAGS=PICTURES,SLOW,FACE
       - PORT=5012
       - GUNICORN_CMD_ARGS=--reload
       - SERVER_PORT=${SERVER_PORT}
@@ -100,6 +103,7 @@ services:
       - ./prediction/ImageShapeMicroservice:/app
     environment:
       - NAME=image_shape
+      - MODEL_TAGS=PICTURE,SLOW
       - PORT=5013
       - GUNICORN_CMD_ARGS=--reload
       - SERVER_PORT=${SERVER_PORT}
@@ -117,6 +121,7 @@ services:
       - ./prediction/SceneDetectMicroservice-V2:/app
     environment:
       - NAME=scene_detect
+      - MODEL_TAGS=ADD,TAGS,HERE
       - PORT=5014
       - GUNICORN_CMD_ARGS=--reload
       - SERVER_PORT=${SERVER_PORT}
@@ -134,6 +139,7 @@ services:
       - ./prediction/HashMicroservice:/app
     environment:
       - NAME=image_hash
+      - MODEL_TAGS=ADD,TAGS,HERE
       - PORT=5015
       - GUNICORN_CMD_ARGS=--reload
       - SERVER_PORT=${SERVER_PORT}

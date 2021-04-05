@@ -47,6 +47,7 @@ class Settings(BaseSettings):
 
     available_models = {}
     available_datasets = {}
+    model_tags = {}
 
 
 settings = Settings()
@@ -81,6 +82,7 @@ class MicroserviceConnection(BaseModel):
 
     name: str = Field(alias="modelName")
     socket: str = Field(alias="modelSocket")
+    model_tags: str = Field(alias="model_tags")
 
     class Config:
         allow_population_by_field_name = True
