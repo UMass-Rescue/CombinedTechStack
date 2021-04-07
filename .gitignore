@@ -1,5 +1,4 @@
 .idea
-secrets.py
 __pycache__*
 training/datasets/mnist_fashion
 env/
