@@ -26,6 +26,17 @@ def test_configuration():
     app.dependency_overrides[current_user_admin] = override_logged_in_user
     app.dependency_overrides[prediction.get_api_key] = override_api_key_prediction
     app.dependency_overrides[training.get_api_key] = override_api_key_training
+    image1 = UniversalMLImage(**{
+                'file_names': ['test_image_file_1.png'],
+                'hash_md5': 'image1hash',
+                'hash_sha1': 'image1hash',
+                'hash_perceptual': 'image1hash',
+                'users': ['testing'],
+                'models': {},
+                'tags': [],
+                'user_role_able_to_tag': ['admin']
+            })
+    add_image_db(image1)
 
     yield
 
