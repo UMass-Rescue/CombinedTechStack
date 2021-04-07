@@ -105,7 +105,7 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
                 'hash_sha1': 'TODO: Remove This Field',
                 'hash_perceptual': 'TODO: Remove This Field',
                 'users': [current_user.username],
-                'models': {}
+                'models': {},
                 'user_role_able_to_tag': ['admin']
             })
 
