@@ -43,7 +43,7 @@ def train_model(training_id, model_data: ModelData):
             logging.StreamHandler(sys.stdout)
         ]
     )
-    log = logging.getLogger('foobar')
+    log = logging.getLogger('db_microservice_logger')
     sys.stdout = StreamToLogger(log,logging.INFO)
     sys.stderr = StreamToLogger(log,logging.ERROR)
     
