@@ -358,10 +358,13 @@ def receive_prediction_results(model_prediction_result: dependency.ModelPredicti
 @model_router.post("/tag/update")
 async def update_image_tags(md5_hashes: List[str], username: str, remove_tags: List[str] = [], new_tags: List[str] = []):
     """
-    Find an image and add tags into its universalMLimage object "tags" field
+    Find list of images and add tags into its universalMLimage object "tags" field
 
-    param: username
-    request body(JSON): md5_hashes, remove_tags, new_tags
+    :param md5_hashes: List of hashes for universal ml image object
+    :param username: username of the current user
+    :param remove_tags: list of image tags that needs to remove
+    :param new_tags: list of image tags that need to be added to image object
+    :return: json with status and detail
     """
     result = update_tags_to_image(md5_hashes, username, remove_tags, new_tags)
     return result
@@ -373,8 +376,11 @@ async def update_image_tag_roles(md5_hashes: List[str], username: str, remove_ro
     Find an image and add roles_able_to_tag into its universalMLimage object "user_role_able_to_tag" field, so that role can update 
     that image's tags
 
-    param: username
-    request body(JSON): md5_hashes, remove_roles, new_roles
+    :param md5_hashes: List of hashes for universal ml image object
+    :param username: username of the current user
+    :param remove_roles: remove list of roles that are authenticated to edit image tags
+    :param new_roles: adding list of roles that are allowed to edit image tags
+    :return: json with status and detail
     """
     result = update_role_to_tag_image(md5_hashes, username, remove_roles, new_roles)
     return result
