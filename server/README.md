@@ -70,4 +70,4 @@ Postman is an exceptional tool for testing, calling, and debugging API endpoints
 your development, you may download the collection of pre-made endpoints with their associated
 parameters.
 
-[![Run in Postman](https://run.pstmn.io/button.svg)](https://app.getpostman.com/run-collection/8ae4299e6f600505577c)
+[![Run in Postman](https://run.pstmn.io/button.svg)](https://app.getpostman.com/run-collection/7dfb4582f8138587f209)

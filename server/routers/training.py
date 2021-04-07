@@ -74,8 +74,8 @@ async def send_training_request(training_data: dependency.TrainingRequestHttpBod
             settings.available_datasets[training_data.dataset] + '/train',
             json={
                 'model_structure': training_data.model_structure,
-                'loss_function': training_data.loss_function,
-                'optimizer': training_data.optimizer,
+                'loss_function': training_data.loss_function.dict(),
+                'optimizer': training_data.optimizer.dict(),
                 'n_epochs': training_data.n_epochs,
                 'save': training_data.save_training_results
             }
@@ -254,6 +254,8 @@ async def save_training_result(r: dependency.TrainingResultHttpBody):
     tr.validation_accuracy = r.results['validation_accuracy']
     tr.training_loss = r.results['training_loss']
     tr.validation_loss = r.results['validation_loss']
+    tr.loss_config = r.results['loss_config']
+    tr.optimizer_config = r.results['optimizer_config']    
     tr.complete = True
     update_training_result_db(tr)
     return {
