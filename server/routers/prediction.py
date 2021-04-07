@@ -106,6 +106,7 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
                 'hash_perceptual': 'TODO: Remove This Field',
                 'users': [current_user.username],
                 'models': {}
+                'user_role_able_to_tag': ['admin']
             })
 
             # Add created image object to database
