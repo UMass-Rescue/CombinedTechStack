@@ -15,7 +15,8 @@ from rq.job import Job
 from routers.auth import current_user_investigator
 from dependency import logger, MicroserviceConnection, settings, redis, User, pool, UniversalMLImage
 from db_connection import add_image_db, add_user_to_image, get_images_from_user_db, get_image_by_md5_hash_db, \
-    get_api_key_by_key_db, add_filename_to_image, add_model_to_image_db, get_models_db, add_model_db
+    get_api_key_by_key_db, add_filename_to_image, add_model_to_image_db, get_models_db, add_model_db, \
+    update_tags_to_image, update_role_to_tag_image
 from typing import List
 from rq import Queue
 import uuid
@@ -104,7 +105,8 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
                 'hash_sha1': 'TODO: Remove This Field',
                 'hash_perceptual': 'TODO: Remove This Field',
                 'users': [current_user.username],
-                'models': {}
+                'models': {},
+                'user_role_able_to_tag': ['admin']
             })
 
             # Add created image object to database
@@ -351,3 +353,35 @@ def receive_prediction_results(model_prediction_result: dependency.ModelPredicti
         image_object = get_image_by_md5_hash_db(model_prediction_result.image_hash)
         add_model_to_image_db(image_object, model_prediction_result.model_name, model_result)
         add_model_db(model_prediction_result.model_name, model_classes)
+
+
+@model_router.post("/tag/update")
+async def update_image_tags(md5_hashes: List[str], username: str, remove_tags: List[str] = [], new_tags: List[str] = []):
+    """
+    Find list of images and add tags into its universalMLimage object "tags" field
+
+    :param md5_hashes: List of hashes for universal ml image object
+    :param username: username of the current user
+    :param remove_tags: list of image tags that needs to remove
+    :param new_tags: list of image tags that need to be added to image object
+    :return: json with status and detail
+    """
+    result = update_tags_to_image(md5_hashes, username, remove_tags, new_tags)
+    return result
+
+
+@model_router.post("/tag/role/update")
+async def update_image_tag_roles(md5_hashes: List[str], username: str, remove_roles: List[str] = [], new_roles: List[str] = []):
+    """
+    Find an image and add roles_able_to_tag into its universalMLimage object "user_role_able_to_tag" field, so that role can update 
+    that image's tags
+
+    :param md5_hashes: List of hashes for universal ml image object
+    :param username: username of the current user
+    :param remove_roles: remove list of roles that are authenticated to edit image tags
+    :param new_roles: adding list of roles that are allowed to edit image tags
+    :return: json with status and detail
+    """
+    result = update_role_to_tag_image(md5_hashes, username, remove_roles, new_roles)
+    return result
+

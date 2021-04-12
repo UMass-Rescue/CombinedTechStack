@@ -311,6 +311,77 @@ def get_image_by_md5_hash_db(image_hash) -> Union[UniversalMLImage, None]:
     return UniversalMLImage(**result)
 
 
+def update_tags_to_image(hashes_md5: [str], username: str, remove_tags: [str], new_tags: [str]):
+    """
+    This method recieves two tags, where user can choose an tag and update it into a new tag
+
+    param:
+        username: user that is updating the tags
+    request body:
+        hashes_md5: list of md5 hashes
+        remove_tags: list of tags needs to be remove from images, default []
+        new_tags: list of tags needs to be added to images, default []
+    return:
+        always return a list with status message in it
+    """
+    result = []
+    user = get_user_by_name_db(username)
+    if user:
+        roles = user.roles
+        for hash_md5 in hashes_md5:
+            if image_collection.find_one({"hash_md5": hash_md5}):
+                authed_roles = image_collection.find_one({"hash_md5": hash_md5})['user_role_able_to_tag']
+                if set(roles) & set(authed_roles): # update tags here
+                    existing_tags = image_collection.find_one({"hash_md5": hash_md5})['tags']
+                    existing_tags = list(set(existing_tags) - set(remove_tags) - set(new_tags))
+                    existing_tags = existing_tags + new_tags
+                    image_collection.update_one(
+                    {"hash_md5": hash_md5},
+                    {'$set': {'tags': list(existing_tags)}}
+                    )
+                    result.append({'status': 'success', 'detail': hash_md5 + ' updated tags'})
+                else:
+                    result.append({'status': 'failure', 'detail': hash_md5 + ' not authorized'})
+            else: # if image not found
+                result.append({'status': 'failure', 'detail': hash_md5 + ' not found'})
+        return result
+    return [{'status': 'failure', 'detail': 'User does not exist'}]
+   
+
+# TODO: Current any roles can change the user_role_able_to_tag field under image object, change the following mark line to limit access
+def update_role_to_tag_image(hashes_md5: [str], username: str, remove_roles: [str], new_roles: [str]):
+    """
+    Update new authorized tagging role to the UMI(image) object, so user with that role can
+    add or remove tag for that image
+
+    :param username: username of the current user
+    :request body:
+        hashes_md5: list of md5 hashes
+        remove_roles: list of roles needs to be remove from images, default []
+        new_roles: list of roles needs to be added to images, default []
+    """
+    result = []
+    user = get_user_by_name_db(username)
+    if user:
+        if set(user.roles) & {"admin", "investigator", "researcher"}: # currently all roles can access this function
+            for hash_md5 in hashes_md5:
+                if image_collection.find_one({"hash_md5": hash_md5}):
+                    current_authed_role = image_collection.find_one({"hash_md5": hash_md5})['user_role_able_to_tag']
+                    current_authed_role = list(set(current_authed_role) - set(remove_roles) - set(new_roles))
+                    current_authed_role = current_authed_role + new_roles
+                    image_collection.update_one(
+                        {"hash_md5": hash_md5},
+                        {'$set': {'user_role_able_to_tag': list(current_authed_role)}}
+                    )
+                    result.append({'status': 'success', 'detail': hash_md5 + ' updated tag roles'})
+                else:
+                    result.append({'status': 'failure', 'detail': hash_md5 + ' not found'})
+            return result
+        return [{'status': 'failure', 'detail': hash_md5 + ' not authorized'}]
+    return [{'status': 'failure', 'detail': 'User does not exist'}]
+
+
+
 # ---------------------------
 # Model Database Interactions
 # ---------------------------
