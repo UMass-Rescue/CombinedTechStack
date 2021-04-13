@@ -43,7 +43,7 @@ async def get_all_prediction_models():
     return {'models': all_models}
 
 
-@model_router.post("/predict")
+@model_router.post("/images/predict")
 def create_new_prediction_on_image(images: List[UploadFile] = File(...),
                                    models: List[str] = (),
                                    current_user: User = Depends(current_user_investigator)):
@@ -131,6 +131,96 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
 
 
     return {"images": [hashes_md5[key] for key in hashes_md5]}
+
+
+@model_router.post("/videos/predict")
+def create_new_prediction_on_videos(videos: List[UploadFile] = File(...),
+                                   models: List[str] = (),
+                                   current_user: User = Depends(current_user_investigator)):
+    """
+    Create a new prediction request for any number of videos on any number of models. This will enqueue the jobs
+    and a worker will process them and get the results. Once this is complete, a user may later query the job
+    status by the unique key that is returned from this method for each video uploaded.
+
+    :param current_user: User object who is logged in
+    :param videos: List of file objects that will be used by the models for prediction
+    :param models: List of models to run on videos
+    :return: Unique keys for each video uploaded in videos.
+    """
+
+    # Start with error checking on the models list.
+    # Ensure that all desired models are valid.
+    if not models:
+        return HTTPException(status_code=400, detail="You must specify models to process videos with")
+
+    invalid_models = []
+    for model in models:
+        if model not in settings.available_models:
+            invalid_models.append(model)
+
+    if invalid_models:
+        error_message = "Invalid Models Specified: " + ''.join(invalid_models)
+        return HTTPException(status_code=400, detail=error_message)
+
+    # Now we must hash each uploaded video
+    # After hashing, we will store the video file on the server.
+
+    buffer_size = 65536  # Read video data in 64KB Chunks for hashlib
+    hashes_md5 = {}
+
+    # Process uploaded videos
+    for upload_file in videos:
+        file = upload_file.file
+        md5 = hashlib.md5()
+        while True:
+            data = file.read(buffer_size)
+            if not data:
+                break
+            md5.update(data)
+
+        # Process video
+        hash_md5 = md5.hexdigest()
+        hashes_md5[upload_file.filename] = hash_md5
+
+        file.seek(0)
+
+        if get_video_by_md5_hash_db(hash_md5):
+            video_object = get_video_by_md5_hash_db(hash_md5)
+        else:  # If video does not already exist in db
+
+            # Create a UniversalMLVideo object to store data
+            video_object = UniversalMLVideo(**{
+                'file_names': [upload_file.filename],
+                'hash_md5': hash_md5,
+                'hash_sha1': 'TODO: Remove This Field',
+                'hash_perceptual': 'TODO: Remove This Field',
+                'users': [current_user.username],
+                'models': {},
+                'user_role_able_to_tag': ['admin']
+            })
+
+            # Add created video object to database
+            add_video_db(video_object)
+
+        # Associate the current user with the video that was uploaded
+        add_user_to_video(video_object, current_user.username)
+
+        # Associate the name the file was uploaded under to the object
+        add_filename_to_video(video_object, upload_file.filename)
+
+        # Copy video to the temporary storage volume for prediction
+        new_filename = hash_md5 + os.path.splitext(upload_file.filename)[1]
+        stored_video_path = "/app/prediction_video/" + new_filename
+        stored_video = open(stored_video_path, 'wb+')
+        shutil.copyfileobj(file, stored_video)
+
+        for model in models:
+            dependency.prediction_queues[model].enqueue(
+                'utility.main.predict_video', hash_md5, new_filename, job_id=hash_md5+model+str(uuid.uuid4())
+            )
+
+
+    return {"videos": [hashes_md5[key] for key in hashes_md5]}
 
 
 @model_router.post("/results", dependencies=[Depends(current_user_investigator)])
@@ -336,7 +426,7 @@ def register_model(model: MicroserviceConnection):
 
 
 @model_router.post('/predict_result', dependencies=[Depends(get_api_key)])
-def receive_prediction_results(model_prediction_result: dependency.ModelPredictionResult):
+def receive_prediction_results(model_pcrediction_result: dependency.ModelPredictionResult):
     """
     Helper method that a worker will use to generate a prediction for a given model. This will be run in a task
     by any redis queue worker that is registered.

@@ -23,6 +23,7 @@ logger = logging.getLogger("api")
 client = MongoClient(os.getenv("DB_HOST", default="database"), 27017)
 database = client["server_database"]
 image_collection = database["images"]  # Create collection for images in database
+video_collection = database["videos"]  # Create collection for videos in database
 user_collection = database["users"]  # Create collection for users in database
 api_key_collection = database["api_key"]  # Create collection for API keys in database
 model_collection = database[
@@ -61,7 +62,7 @@ prediction_queues = {}
 
 class UniversalMLImage(BaseModel):
     """
-    Object that is used to store all data associated with a model prediction request.
+    Object that is used to store all data associated with an image model prediction request.
     """
 
     file_names: List[str] = []  # List of all file names that this is uploaded as
@@ -72,6 +73,21 @@ class UniversalMLImage(BaseModel):
     metadata: str = ""  # All image information stored as a string
     models: dict = {}  # ML Model results
     tags: list = [] # Allow certified user to add tags when image is being uploaded 
+    user_role_able_to_tag: list = [] #list of users allowed to add and remove tags
+
+class UniversalMLVideo(BaseModel):
+    """
+    Object that is used to store all data associated with a video model prediction request.
+    """
+
+    file_names: List[str] = []  # List of all file names that this is uploaded as
+    hash_md5: str  # Video md5 hash
+    hash_sha1: str  # Video sha1 hash
+    hash_perceptual: str  # Video perceptual hash
+    users: list = []  # All users who have uploaded the video
+    metadata: str = ""  # All video information stored as a string
+    models: dict = {}  # ML Model results
+    tags: list = [] # Allow certified user to add tags when video is being uploaded 
     user_role_able_to_tag: list = [] #list of users allowed to add and remove tags
 
 

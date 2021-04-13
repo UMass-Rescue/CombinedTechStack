@@ -126,6 +126,262 @@ def set_api_key_enabled_db(key: APIKeyData, enabled: bool) -> bool:
 
 
 # ---------------------------
+# Video Database Interactions
+# ---------------------------
+
+
+def add_video_db(video: UniversalMLVideo):
+    """
+    Adds a new video to the database based on the UniversalMLVideo model.
+
+    :param video: UniversalMLVideo to add to database.
+    """
+
+    if not video_collection.find_one({"hash_md5": video.hash_md5}):
+        video_collection.insert_one(video.dict())
+
+
+def add_user_to_video(video: UniversalMLVideo, username: str):
+    """
+    Adds a user account to a UniversalMLVideo record. This is used to track which users upload videos.
+
+    :param v: UniversalMLVideo to update
+    :param username: Username of user who is accessing video
+    """
+    if video_collection.find_one({"hash_md5": video.hash_md5}):
+        existing_users = list(video_collection.find_one({"hash_md5": video.hash_md5})['users'])
+        if username not in existing_users:  # Only update if not in list already
+            existing_users.append(username)
+            video_collection.update_one(
+                {"hash_md5": video.hash_md5},
+                {'$set': {'users': existing_users}}
+            )
+
+
+def add_filename_to_video(video: UniversalMLVideo, filename: str):
+    """
+    Adds a filename to a UniversalMLVideo record. This is used to track all file names that an video is uploaded to
+    the server under. An video file is considered "the same" if their md5 hashes are identical.
+
+    :param video: UniversalMLVideo to update
+    :param filename: file name with extension
+    """
+    if video_collection.find_one({"hash_md5": video.hash_md5}):
+        current_names = list(video_collection.find_one({"hash_md5": video.hash_md5})['file_names'])
+        if filename not in current_names:  # Only update if not in list already
+            current_names.append(filename)
+            video_collection.update_one(
+                {"hash_md5": video.hash_md5},
+                {'$set': {'file_names': current_names}}
+            )
+
+
+def add_model_to_video_db(video: UniversalMLVideo, model_name, result):
+    """
+    Adds prediction data to a UniversalMLVideo object. This is normally called when a prediction microservice
+    returns data to the server with the results of a prediction request. The 'metadata' field is always updated.
+    in this method as a string to enable easy querying of nested model results.
+
+    :param video: UniversalMLVideo to add prediction data to
+    :param model_name: Name of model that was run on the video.
+    :param result: JSON results of the training
+    """
+
+    new_metadata = [list(video.dict()['models'].values()), model_name, result] + video.file_names
+    metadata_str = json.dumps(new_metadata)
+    for char_to_replace in ['"', "'", "\\", '[', ']', '{', '}']:
+        metadata_str = metadata_str.replace(char_to_replace, '')
+
+    video_collection.update_one({'hash_md5': video.hash_md5}, {'$set': {
+        'models.' + model_name: result,
+        'metadata': metadata_str
+    }})
+
+
+def get_videos_from_user_db(
+        username: str,
+        page: int = -1,
+        search_filter: dict = None,
+        search_string: str = '',
+        paginate: bool = True
+):
+    """
+    Returns a list of video hashes associated with a username. This method also has pagination support and if a page
+    number is provided, then it will return dependency.PAGINATION_PAGE_SIZE video hashes. If the username of the user
+    in this request is an administrator, then all video in the server will be queried. Otherwise, only UniversalMLVideo
+    objects that contain the username will be included in the results.
+
+    This method also has unique functionality to allow for filtering of video results. If these values are provided,
+    the mongo query will be filtered based on the fields available in search_filter and search_string.
+
+    :param username: Username of user to get videos for
+    :param page: Page to return of results. Will return all videos if page is -1
+    :param search_filter Optional filter to narrow down query
+    :param search_string String that will be matched against video metadata
+    :param paginate Return all results or only page
+    :return: Array of video hashes, total pages
+    """
+
+    user = get_user_by_name_db(username)
+    if not user:  # If user does not exist, return empty
+        return [], 0
+
+    # If there is a filter, start with the correct dataset that has been filtered already
+    # Generate the result of the query in this step
+    if search_filter or search_string:
+        # List comprehension to take the inputted filter and make it into a pymongo query-compatible expression
+        search_params = []
+        if search_filter:  # Append search filter
+            flat_model_filter = (
+                [{'models.' + model + '.' + str(model_class): {'$gt': 0}} for model in search_filter for model_class in
+                 search_filter[model]])
+            search_params.append({'$or': flat_model_filter})
+        if search_string:  # Append search string
+            search_params.append({"metadata": {'$regex': search_string, '$options': 'i'}})
+        if Roles.admin.name not in user.roles:  # Add username to limit results if not admin
+            search_params.append({'users': username})
+
+        result = video_collection.find({'$and': search_params}, {"hash_md5"})
+    else:
+        if Roles.admin.name in user.roles:
+            result = video_collection.find({}, {"hash_md5"})
+        else:
+            result = video_collection.find({'users': username}, {"hash_md5"})
+
+    # If we are getting a specific page of videos, then generate the list of hashes
+    final_hash_list = []
+    if page > 0 and paginate:
+        # We use this for actual db queries. Page 1 = index 0
+        page_index = page - 1
+        final_hash_list = result.skip(PAGINATION_PAGE_SIZE * page_index).limit(PAGINATION_PAGE_SIZE)
+
+        # After query, convert the result to a list
+        final_hash_list = [video_map['hash_md5'] for video_map in list(final_hash_list)]
+    elif not paginate:  # Return all results
+        final_hash_list = [video_map['hash_md5'] for video_map in list(result)]
+
+    num_videos = result.count()
+    return_value = {
+        "hashes": final_hash_list,
+        "num_videos": num_videos
+    }
+    if paginate:
+        return_value["num_pages"] = math.ceil(num_videos / PAGINATION_PAGE_SIZE)
+
+    return return_value
+
+
+def get_models_from_video_db(video: UniversalMLVideo, model_name: str = ""):
+    """
+    Creates a dictionary of all models with prediction results for a given video. This is returned
+    in the format of {modelName: result1, ...}.
+
+    :param video: UniversalMLVideo to obtain model results from
+    :param model_name: Optional filter to return specific model name
+    :return: Dictionary of model results
+    """
+
+    projection = {
+        "_id": 0,
+        "models": 1
+    }
+
+    if not video_collection.find_one({"hash_md5": video.hash_md5}):
+        return {}
+
+    if model_name != "":
+        results = video_collection.find_one({"hash_md5": video.hash_md5}, projection)
+        return {model_name: results['models'][model_name]}
+    else:
+        return video_collection.find_one({"hash_md5": video.hash_md5}, projection)['models']
+
+
+def get_video_by_md5_hash_db(video_hash) -> Union[UniversalMLVideo, None]:
+    """
+    Locates an video data by its md5 hash, and then creates a UniversalMLVideo object with that data.
+
+    :param video_hash: md5 hash of video to search for
+    :return: UniversalMLVideo object of video with a md5 hash, or None if not found
+    """
+    if not video_collection.find_one({"hash_md5": video_hash}):
+        return None
+
+    result = video_collection.find_one({"hash_md5": video_hash})
+    result.pop('_id')
+    return UniversalMLVideo(**result)
+
+
+def update_tags_to_video(hashes_md5: [str], username: str, remove_tags: [str], new_tags: [str]):
+    """
+    This method recieves two tags, where user can choose an tag and update it into a new tag
+
+    param:
+        username: user that is updating the tags
+    request body:
+        hashes_md5: list of md5 hashes
+        remove_tags: list of tags needs to be remove from videos, default []
+        new_tags: list of tags needs to be added to videos, default []
+    return:
+        always return a list with status message in it
+    """
+    result = []
+    user = get_user_by_name_db(username)
+    if user:
+        roles = user.roles
+        for hash_md5 in hashes_md5:
+            if video_collection.find_one({"hash_md5": hash_md5}):
+                authed_roles = video_collection.find_one({"hash_md5": hash_md5})['user_role_able_to_tag']
+                if set(roles) & set(authed_roles): # update tags here
+                    existing_tags = video_collection.find_one({"hash_md5": hash_md5})['tags']
+                    existing_tags = list(set(existing_tags) - set(remove_tags) - set(new_tags))
+                    existing_tags = existing_tags + new_tags
+                    video_collection.update_one(
+                    {"hash_md5": hash_md5},
+                    {'$set': {'tags': list(existing_tags)}}
+                    )
+                    result.append({'status': 'success', 'detail': hash_md5 + ' updated tags'})
+                else:
+                    result.append({'status': 'failure', 'detail': hash_md5 + ' not authorized'})
+            else: # if video not found
+                result.append({'status': 'failure', 'detail': hash_md5 + ' not found'})
+        return result
+    return [{'status': 'failure', 'detail': 'User does not exist'}]
+   
+
+# TODO: Current any roles can change the user_role_able_to_tag field under video object, change the following mark line to limit access
+def update_role_to_tag_video(hashes_md5: [str], username: str, remove_roles: [str], new_roles: [str]):
+    """
+    Update new authorized tagging role to the UMI(video) object, so user with that role can
+    add or remove tag for that video
+
+    :param username: username of the current user
+    :request body:
+        hashes_md5: list of md5 hashes
+        remove_roles: list of roles needs to be remove from videos, default []
+        new_roles: list of roles needs to be added to videos, default []
+    """
+    result = []
+    user = get_user_by_name_db(username)
+    if user:
+        if set(user.roles) & {"admin", "investigator", "researcher"}: # currently all roles can access this function
+            for hash_md5 in hashes_md5:
+                if video_collection.find_one({"hash_md5": hash_md5}):
+                    current_authed_role = video_collection.find_one({"hash_md5": hash_md5})['user_role_able_to_tag']
+                    current_authed_role = list(set(current_authed_role) - set(remove_roles) - set(new_roles))
+                    current_authed_role = current_authed_role + new_roles
+                    video_collection.update_one(
+                        {"hash_md5": hash_md5},
+                        {'$set': {'user_role_able_to_tag': list(current_authed_role)}}
+                    )
+                    result.append({'status': 'success', 'detail': hash_md5 + ' updated tag roles'})
+                else:
+                    result.append({'status': 'failure', 'detail': hash_md5 + ' not found'})
+            return result
+        return [{'status': 'failure', 'detail': hash_md5 + ' not authorized'}]
+    return [{'status': 'failure', 'detail': 'User does not exist'}]
+
+
+# ---------------------------
 # Image Database Interactions
 # ---------------------------
 
@@ -379,8 +635,6 @@ def update_role_to_tag_image(hashes_md5: [str], username: str, remove_roles: [st
             return result
         return [{'status': 'failure', 'detail': hash_md5 + ' not authorized'}]
     return [{'status': 'failure', 'detail': 'User does not exist'}]
-
-
 
 # ---------------------------
 # Model Database Interactions
