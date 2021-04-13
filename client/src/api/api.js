@@ -11,6 +11,7 @@ const api = {
     model_result_list: '/model/all', // GET
     search_images: '/model/search', // POST
     search_image_download: '/model/search/download', // POST
+    update_tag: '/model/tag/update', // POST
     api_key_list: '/auth/key', // GET
     api_key_new: '/auth/key', // POST
     api_key_remove: '/auth/key', // DELETE
