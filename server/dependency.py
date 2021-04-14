@@ -24,6 +24,7 @@ client = MongoClient(os.getenv("DB_HOST", default="database"), 27017)
 database = client["server_database"]
 image_collection = database["images"]  # Create collection for images in database
 user_collection = database["users"]  # Create collection for users in database
+text_collection = database["texts"]   # Create collection for texts in database
 api_key_collection = database["api_key"]  # Create collection for API keys in database
 model_collection = database[
     "models"
@@ -75,6 +76,24 @@ class UniversalMLImage(BaseModel):
     user_role_able_to_tag: list = [] #list of users allowed to add and remove tags
 
 
+class UniversalMLText(BaseModel):
+    """
+    Object that is used to store all data associated with a model prediction request for text.
+    """
+    file_names: List[str] = []  # List of all file names that this is uploaded as
+    hash_md5: str  #hash_md5 that is signed to every universalMLText object
+    users: List[str] = []  # the user uploaded this text content
+    text_content: str = ""  # All text information stored as a string 
+    author: List[str] = []  # The person who wrote this text, default empty
+    audience: List[str] = []  # The receiver of this text
+    text_source: List[str] = []  # Where this piece of text is from, can include media platform or phisical location
+    time_stamp: List[str] = []  # Time of this text being sent. Ex: ["2021","march 14", "21:30"]
+    sequence_id: str = None #  The sequence of id of this text belongs to, example it is from sequence of text message
+    models: dict = {}  # ML model results
+    tags: List[str] = []  # Allow certified user to add tags when image is being uploaded
+    user_role_able_to_tag: List[str] = []  #list of users allowed to add and remove tags
+
+
 class MicroserviceConnection(BaseModel):
     """
     Object that is passed/received via HTTP request when registering a new model or dataset to the server.
@@ -87,10 +106,12 @@ class MicroserviceConnection(BaseModel):
         allow_population_by_field_name = True
 
 
+# TODO limit the type field to be model, image, text, audio ...
 class ModelPredictionResult(BaseModel):
     model_name: str
-    image_hash: str
+    hash_md5: str
     results: dict
+    model_type: str
 
 
 class SearchFilter(BaseModel):

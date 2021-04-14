@@ -2,7 +2,8 @@ from typing import Union, List
 
 from dependency import User, user_collection, image_collection, PAGINATION_PAGE_SIZE, UniversalMLImage, Roles, \
     APIKeyData, \
-    api_key_collection, model_collection, TrainingResult, training_collection, logger
+    api_key_collection, model_collection, TrainingResult, training_collection, logger, \
+    text_collection, UniversalMLText
 import math
 import json
 
@@ -124,6 +125,50 @@ def set_api_key_enabled_db(key: APIKeyData, enabled: bool) -> bool:
     api_key_collection.update_one({'key': key.key}, {'$set': {'enabled': enabled}})
     return True
 
+
+# ---------------------------
+# Text Database Interactions
+# ---------------------------
+
+def add_text_db(text: UniversalMLText):
+    """
+    Adds a new text to the database based on the UniversalMLText model
+
+    :param text: UniversalMLText to add to database
+    """
+    if not text_collection.find_one({"hash_md5": text.hash_md5}):
+        text_collection.insert_one(text.dict())
+
+
+def get_text_by_md5_hash_db(text_hash_md5) -> Union[UniversalMLImage, None]:
+    """
+    Locates an text data by its uuid, and then return that object or none.
+
+    :param text_uuid: uuid of the text object you search for
+    :return: UniversalMLText object of text with that uuid, or None if not found
+    """
+    result = text_collection.find_one({"hash_md5": text_hash_md5})
+    if not result:
+        return None
+
+    result.pop('_id')
+    return UniversalMLText(**result)
+
+
+def add_model_to_text_db(text: UniversalMLText, model_name, result):
+    """
+    Adds prediction data to a UniversalMLImage object. This is normally called when a prediction microservice
+    returns data to the server with the results of a prediction request. The 'metadata' field is always updated.
+    in this method as a string to enable easy querying of nested model results.
+
+    :param image: UniversalMLImage to add prediction data to
+    :param model_name: Name of model that was run on the image.
+    :param result: JSON results of the training
+    """
+
+    text_collection.update_one({'hash_md5': text.hash_md5}, {'$set': {
+        'models.' + model_name: result
+    }})
 
 # ---------------------------
 # Image Database Interactions

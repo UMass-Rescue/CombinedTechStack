@@ -13,10 +13,12 @@ from fastapi import File, UploadFile, HTTPException, Depends, APIRouter
 from rq.job import Job
 
 from routers.auth import current_user_investigator
-from dependency import logger, MicroserviceConnection, settings, redis, User, pool, UniversalMLImage
+from dependency import logger, MicroserviceConnection, settings, redis, User, pool, UniversalMLImage, \
+    UniversalMLText
 from db_connection import add_image_db, add_user_to_image, get_images_from_user_db, get_image_by_md5_hash_db, \
     get_api_key_by_key_db, add_filename_to_image, add_model_to_image_db, get_models_db, add_model_db, \
-    update_tags_to_image, update_role_to_tag_image
+    update_tags_to_image, update_role_to_tag_image, \
+    get_text_by_md5_hash_db, add_text_db, add_model_to_text_db
 from typing import List
 from rq import Queue
 import uuid
@@ -41,6 +43,110 @@ async def get_all_prediction_models():
     """
     all_models = get_models_db()
     return {'models': all_models}
+
+@model_router.get("/model/test")
+async def test():
+    return get_models_db()
+
+
+
+@model_router.get("/text/results")
+def results_text_prediction(hashes_md5: str):
+    #results = [get_text_by_md5_hash_db(hash_md5) for hash_md5 in hashes_md5]
+    if get_text_by_md5_hash_db(hashes_md5):
+        return get_text_by_md5_hash_db(hashes_md5)
+    return {"msg": "hash not found in the database"}
+
+@model_router.post("/text/add")
+def results_text_prediction(hash_md5: str):
+    text_object = UniversalMLText(**{
+                'file_names': ["testing_object"],
+                'hash_md5': hash_md5,
+                'users': ["admin"],
+                'text_content': "this is love",
+                'models': {}, # ML model results
+                'user_role_able_to_tag': ['admin']
+            })
+    add_text_db(text_object)
+    return {'status': 'success'}
+
+
+# TODO check the file is txt file
+@model_router.post("/text/predict")
+def create_prediction_on_image(text_files: List[UploadFile] = File(...), 
+                                models: List[str] = (), 
+                                current_user: User = Depends(current_user_investigator),
+                                author: List[str] = [], audience: List[str] = [], text_source: List[str]=[],
+                                time_stamp: List[str] = [], sequence_id: str = None
+                                ):
+    """
+    Create a new prediction request for any number of text files
+    """
+    # Start with error checking for the model list
+    if not models:
+        return HTTPException(status_code=400, detail="You must specify models to process images with")
+
+    invalid_models = []
+    for model in models:
+        if model not in settings.available_models:
+            invalid_models.append(model)
+
+    if invalid_models:
+        error_message = "Invalid Models Specified: " + ''.join(invalid_models)
+        return HTTPException(status_code=400, detail=error_message)
+    
+    # Now we must hash each uploaded image
+    # After hashing, we will store the image file on the server.
+
+    # !!!!WARNING no buffur size here, may need based on the file size
+    hashes_md5 = {} # hash md5 based on the text
+    
+    # Read from file and parse the file into string of text
+    # Sign each text a hash_md5, and store the information on the server
+    for text_file in text_files:
+        file_name = text_file.filename
+        file = text_file.file
+        data = file.read() # a string of the text
+        md5 = hashlib.md5()
+        if not data:
+            break
+        md5.update(data)
+        
+        # Give a unique id to this file, and make sure no same id in db
+        # Hash_md5 prevents duplicate objects
+        hash_md5 = md5.hexdigest()
+        hashes_md5[file_name] = hash_md5
+
+        if get_text_by_md5_hash_db(hash_md5):
+            text_object = get_text_by_md5_hash_db(hash_md5)
+        else:  # If image does not already exist in db
+        
+            # Create a UniversalMLImage object to store data
+            text_object = UniversalMLText(**{
+                'file_names': [file_name],
+                'hash_md5': hash_md5,
+                'users': [current_user.username],
+                'text_content': data,
+                'author': author,
+                'audience': audience,
+                'text_source': text_source,
+                'time_stamp': time_stamp,
+                'sequence_id': sequence_id,
+                'models': {}, # ML model results
+                'user_role_able_to_tag': ['admin']
+            })
+
+            # Add created text object to database
+            add_text_db(text_object)
+        
+        # use each model to predict image or text
+        for model in models:
+            dependency.prediction_queues[model].enqueue(
+                # hash = hash_md5, prediction_identifier = new_filename, model_type = "text"
+                'utility.main.predict_model', hash_md5, data, job_id=hash_md5+model+str(uuid.uuid4())
+            )
+
+    return {"texts": [hashes_md5[key] for key in hashes_md5]}
 
 
 @model_router.post("/predict")
@@ -126,7 +232,8 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
 
         for model in models:
             dependency.prediction_queues[model].enqueue(
-                'utility.main.predict_image', hash_md5, new_filename, job_id=hash_md5+model+str(uuid.uuid4())
+                # hash = hash_md5, prediction_identifier = new_filename, model_type = "image"
+                'utility.main.predict_model', hash_md5, new_filename, job_id=hash_md5+model+str(uuid.uuid4())
             )
 
 
@@ -347,12 +454,27 @@ def receive_prediction_results(model_prediction_result: dependency.ModelPredicti
     # Receive Prediction from Model
     model_result = model_prediction_result.results['result']
     model_classes = model_prediction_result.results['classes']
+    model_type = model_prediction_result.model_type
 
     # Store result of model prediction into database
-    if dependency.image_collection.find_one({"hash_md5": model_prediction_result.image_hash}):
-        image_object = get_image_by_md5_hash_db(model_prediction_result.image_hash)
-        add_model_to_image_db(image_object, model_prediction_result.model_name, model_result)
-        add_model_db(model_prediction_result.model_name, model_classes)
+    # For image model results add to image_collection
+    if model_type == "image":
+        if dependency.image_collection.find_one({"hash_md5": model_prediction_result.hash_md5}):
+            image_object = get_image_by_md5_hash_db(model_prediction_result.hash_md5)
+            add_model_to_image_db(image_object, model_prediction_result.model_name, model_result)
+            add_model_db(model_prediction_result.model_name, model_classes)
+            
+
+    # For text model results add to text_collection
+    if model_type == "text":
+        if dependency.text_collection.find_one({"hash_md5": model_prediction_result.hash_md5}):
+            text_object = get_text_by_md5_hash_db(model_prediction_result.hash_md5)
+            add_model_to_text_db(text_object, model_prediction_result.model_name, model_result)
+            add_model_db(model_prediction_result.model_name, model_classes)
+    
+    # Other type of model goes here
+            
+
 
 
 @model_router.post("/tag/update")

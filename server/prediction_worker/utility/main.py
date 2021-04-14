@@ -1,7 +1,7 @@
 import os
 import requests
 from model.model import predict, init
-from model.config import model_name, model_tags
+from model.config import model_name, model_tags, model_type
 from worker import shutdown
 import time
 
@@ -38,9 +38,10 @@ def register_to_server():
     print('[Worker] Registration Thread Shutting down.')
 
 
-def predict_image(image_hash, image_file_name):
+def predict_model(hash, prediction_identifier):
     # try:
-    result = predict(image_file_name)  # Create prediction on model
+    prediction_identifier = str(prediction_identifier)
+    result = predict(prediction_identifier)  # Create prediction on model
     # except:
     #     # Do not send prediction results to server on crash. 
     #     print('[Error] Model Prediction Crash. Model: [' + model_name + '] Hash:[' + image_hash + ']')
@@ -55,10 +56,11 @@ def predict_image(image_hash, image_file_name):
             headers=headers,
             json={
                 'model_name': model_name,
-                'image_hash': image_hash,
-                'results': result
+                'hash_md5': hash,
+                'results': result,
+                'model_type': model_type
             }
         )
         r.raise_for_status()
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-        print('[Error] Model Result Sending Failure. Model: [' + model_name +'] Hash:[' + image_hash + ']')
+        print('[Error] Model Result Sending Failure. Model: [' + model_name +'] Hash:[' + hash + ']')
