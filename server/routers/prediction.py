@@ -44,6 +44,13 @@ async def get_all_prediction_models():
     all_models = get_models_db()
     return {'models': all_models}
 
+@model_router.get("/tags", dependencies=[Depends(current_user_investigator)])
+async def get_available_prediction_models():
+    """
+    Returns list of tags for each available model
+    """
+    return {"tags": settings.models_tags}
+
 
 @model_router.get("/text/results")
 def results_text_prediction(hashes_md5: str):
@@ -410,10 +417,12 @@ def register_model(model: MicroserviceConnection):
             'detail': 'Model has already been registered.'
         }
 
-
     # Register model as available and add its queue
     settings.available_models.add(model.name)
     dependency.prediction_queues[model.name] = Queue(model.name, connection=redis)
+    logger.debug(model.modelTags)
+    settings.models_tags[model.name] = model.modelTags
+    
 
     logger.debug("Model " + model.name + " successfully registered to server.")
 

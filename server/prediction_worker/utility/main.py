@@ -14,13 +14,14 @@ def register_to_server():
     Registers a prediction model to the server. This will automatically register the correct name
     for the model.
     """
+    # raise Exception(model_tags)
     while not shutdown:
         try:  # Register to server
             headers = {'api_key': API_KEY}
             r = requests.post(
                 SERVER_SOCKET + '/model/register',
                 headers=headers,
-                json={'name': model_name}
+                json={'name': model_name, "modelTags": model_tags}
             )
             r.raise_for_status()
             if r.status_code != 200:
