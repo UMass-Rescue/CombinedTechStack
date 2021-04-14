@@ -44,11 +44,6 @@ async def get_all_prediction_models():
     all_models = get_models_db()
     return {'models': all_models}
 
-@model_router.get("/model/test")
-async def test():
-    return get_models_db()
-
-
 
 @model_router.get("/text/results")
 def results_text_prediction(hashes_md5: str):
@@ -56,19 +51,6 @@ def results_text_prediction(hashes_md5: str):
     if get_text_by_md5_hash_db(hashes_md5):
         return get_text_by_md5_hash_db(hashes_md5)
     return {"msg": "hash not found in the database"}
-
-@model_router.post("/text/add")
-def results_text_prediction(hash_md5: str):
-    text_object = UniversalMLText(**{
-                'file_names': ["testing_object"],
-                'hash_md5': hash_md5,
-                'users': ["admin"],
-                'text_content': "this is love",
-                'models': {}, # ML model results
-                'user_role_able_to_tag': ['admin']
-            })
-    add_text_db(text_object)
-    return {'status': 'success'}
 
 
 # TODO check the file is txt file
