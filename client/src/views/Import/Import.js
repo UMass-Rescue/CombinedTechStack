@@ -8,7 +8,8 @@ import {
     Checkbox,
     FormControlLabel,
     CardContent,
-    Box
+    Box,
+    Chip
 } from '@material-ui/core';
 import ImageDropzone from "../../components/ImageDropzone/ImageDropzone";
 import Card from "@material-ui/core/Card";
@@ -17,7 +18,8 @@ import TableRow from "@material-ui/core/TableRow";
 import TableCell from "@material-ui/core/TableCell";
 import TableBody from "@material-ui/core/TableBody";
 import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline';
-import RemoveIcon from '@material-ui/icons/Remove';
+import IconButton from '@material-ui/core/IconButton';
+import DeleteIcon from '@material-ui/icons/Delete';
 import TableHead from "@material-ui/core/TableHead";
 import Snackbar from "@material-ui/core/Snackbar";
 import Alert from "@material-ui/lab/Alert";
@@ -80,6 +82,7 @@ const Import = () => {
     const [modelsToUse, setModelsToUse] = useState([]);  // Models for the photoanalysisserver to use on uploads
     const [open, setOpen] = useState(false); // Handles state of image upload snackbar
     const [allChecked, setAllChecked] = useState(false); // If all models are selected
+    const [modelsTags, setModelsTags] = useState({}); // Models tags from the photoanalysisserver
 
     useEffect(() => {
         axios.request({
@@ -88,6 +91,24 @@ const Import = () => {
                 headers: { Authorization: 'Bearer ' + Auth.token } 
             }).then((response) => {
                 setModelsAvailable(response.data['models']);
+            }, (error) => {
+                console.log('Unable to connect to server or no models available.');
+            });
+    }, []);
+
+    /* This imports the model tags from the HTTP get and then divides the list by comma*/
+    useEffect(() => {
+        axios.request({
+                method: 'get', 
+                url: baseurl + api['model_tag_list'], 
+                headers: { Authorization: 'Bearer ' + Auth.token } 
+            }).then((response) => {
+                // HTTP GET returns an array with the dictionary
+                for (const tagItem in response.data['tags']) {
+                    // Loop through all items in the dictionary, split the strings by comma into lists
+                    response.data['tags'][tagItem] = response.data['tags'][tagItem].split(",");
+                };
+                setModelsTags(response.data['tags']);
             }, (error) => {
                 console.log('Unable to connect to server or no models available.');
             });
@@ -161,6 +182,10 @@ const Import = () => {
         setOpen(false);
     };
 
+    function handleRemoveImage(filename) {
+        const newList = filesToUpload.filter((item) => item.name !== filename);
+        setFilesToUpload(newList);
+    }
 
     return (
         <div className={classes.root}>
@@ -237,11 +262,15 @@ const Import = () => {
                                                     <TableCell component="th" scope="row">
                                                         {fileObject.name}
                                                     </TableCell>
-                                                    <TableCell>
+                                                    <TableCell style={{justifyContent: 'center'}}>
                                                         {(filesUploaded.includes(fileObject.name) &&
-                                                            <CheckCircleOutlineIcon />
+                                                            <IconButton aria-label="check"  size="small" disabled style={{color: 'green'}} className={classes.uploadedButton} >
+                                                                <CheckCircleOutlineIcon />
+                                                            </IconButton>
                                                         ) ||
-                                                            <RemoveIcon />
+                                                            <IconButton aria-label="delete"  size="small" onClick={() => { handleRemoveImage(fileObject.name) }}>
+                                                              <DeleteIcon />
+                                                            </IconButton>
                                                         }
                                                     </TableCell>
                                                 </TableRow>
@@ -305,6 +334,7 @@ const Import = () => {
                                         <TableRow>
                                             <TableCell>Model</TableCell>
                                             <TableCell>Selected</TableCell>
+                                            <TableCell>Tags</TableCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
@@ -323,6 +353,12 @@ const Import = () => {
                                                         :
                                                         <CheckCircleOutlineIcon />
                                                     }
+                                                </TableCell>
+                                                <TableCell>
+                                                    {/*Find tags by modelname and print*/}
+                                                    {modelsTags[modelName] && modelsTags[modelName].map((tags, index) => (
+                                                        <Chip label = {tags} key={index}/>
+                                                    ))}
                                                 </TableCell>
                                             </TableRow>
                                         ))}
