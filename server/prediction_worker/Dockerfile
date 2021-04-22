@@ -13,4 +13,5 @@ ARG MODEL_NAME
 COPY "../../prediction/models/${MODEL_NAME}/requirements.txt" /app
 
 # Install requirements.
+RUN apt-get -y update && apt-get install -y python3-opencv
 RUN pip --no-cache-dir install -r requirements.txt
