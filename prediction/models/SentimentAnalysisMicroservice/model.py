@@ -1,14 +1,16 @@
 from transformers import pipeline
 
-nlp = None
+# nlp = None
 
 def init():
     """
     This method will be run once on startup. You should check if the supporting files your
     model needs have been created, and if not then you should create/fetch them.
     """
-    global nlp
-    nlp = pipeline("sentiment-analysis")
+    # global nlp
+
+    # nlp = pipeline("sentiment-analysis")
+    return True
 
 
 
@@ -30,6 +32,7 @@ def predict(prediction_input: str):
     Example code for opening the image using PIL:
     image = Image.open('/app/images/'+image_file_name)
     """
+    nlp = pipeline("sentiment-analysis")
     data = prediction_input
     result = nlp(data)[0]
 

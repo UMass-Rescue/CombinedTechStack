@@ -52,6 +52,7 @@ async def get_available_prediction_models():
     return {"tags": settings.models_tags}
 
 
+# TODO change the input to list of str
 @model_router.get("/text/results")
 def results_text_prediction(hashes_md5: str):
     #results = [get_text_by_md5_hash_db(hash_md5) for hash_md5 in hashes_md5]

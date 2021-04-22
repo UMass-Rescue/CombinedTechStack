@@ -94,6 +94,26 @@ services:
       - redis
       - server
 
+  # TODO test this model
+  worker_nertext:
+    container_name: ${PREDICTION_NER_TEXT}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction_worker/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_NER_TEXT}
+    volumes:
+      - ./prediction/models/${PREDICTION_NER_TEXT}:/app/model
+      - prediction_images:/app/images
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
+
 
   worker_average_pixel:
     container_name: ${PREDICTION_AVERAGE_PIXEL}_worker

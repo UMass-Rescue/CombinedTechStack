@@ -1,0 +1,6 @@
+pillow
+requests
+rq
+redis
+tensorflow
+transformers

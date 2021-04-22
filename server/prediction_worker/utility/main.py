@@ -39,7 +39,7 @@ def register_to_server():
     print('[Worker] Registration Thread Shutting down.')
 
 
-def predict_model(hash, prediction_identifier):
+def predict_model(md5_hash, prediction_identifier):
     # try:
     prediction_identifier = str(prediction_identifier)
     result = predict(prediction_identifier)  # Create prediction on model
@@ -57,11 +57,11 @@ def predict_model(hash, prediction_identifier):
             headers=headers,
             json={
                 'model_name': model_name,
-                'hash_md5': hash,
+                'hash_md5': md5_hash,
                 'results': result,
                 'model_type': model_type
             }
         )
         r.raise_for_status()
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-        print('[Error] Model Result Sending Failure. Model: [' + model_name +'] Hash:[' + hash + ']')
+        print('[Error] Model Result Sending Failure. Model: [' + model_name +'] Hash:[' + md5_hash + ']')
