@@ -67,8 +67,9 @@ async def credential_exception_handler(request: Request, exc: CredentialExceptio
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED,
         content={
-            "status": 'failure',
-            "detail": "Unable to validate credentials."
+            "detail": "Unable to validate credentials. Please ensure that your OAuth2 token is provided and that it "
+                      "is current. If you are connecting with an API key, please ensure that it is of the correct type"
+                      "for the service that you are connecting to."
         },
         headers={"WWW-Authenticate": "Bearer"},
     )
@@ -110,7 +111,6 @@ async def root():
     :return: {'status': 'success'} if server is running, else no HTTP response.
     """
     return {
-        "status": "success",
         "detail": 'PhotoAnalysisServer is Running'
     }
 
@@ -135,7 +135,6 @@ def delete_unused_files():
             os.remove('./prediction_images/' + file_name)
             logger.debug('[Automated Deletion Thread] Removed Image File [' + file_name + ']')
 
-
     # Delay for an hour between deletion checks
     for _ in range(60*60):  
         if not dependency.shutdown:  # Check between increments to stop hanging on shutdown
@@ -147,7 +146,6 @@ def delete_unused_files():
         logger.debug('Image Deletion Thread Terminated')
 
 
-
 @app.on_event('startup')
 def on_startup():
     """
@@ -155,7 +153,6 @@ def on_startup():
     """ 
 
     pool.submit(delete_unused_files) 
-
 
 
 @app.on_event('shutdown') 

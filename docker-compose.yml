@@ -24,6 +24,8 @@ services:
       dockerfile: Dockerfile
     environment:
       - GUNICORN_CMD_ARGS=--reload
+      - OAUTH2_SECRET_KEY=${OAUTH2_SECRET_KEY}
+      - OAUTH2_TOKEN_EXPIRATION_MINUTES=${OAUTH2_TOKEN_EXPIRATION_MINUTES}
     volumes:
       - ./server/:/app
       - prediction_images:/app/prediction_images

@@ -1,15 +1,14 @@
 import hashlib
 import os
 import shutil
-import time
+
 
 from rq.registry import StartedJobRegistry
-from starlette import status
-from starlette.responses import JSONResponse
 
 import dependency
-import requests
-from fastapi import File, UploadFile, HTTPException, Depends, APIRouter
+from fastapi import File, UploadFile, Depends, APIRouter
+from fastapi.responses import JSONResponse
+
 from rq.job import Job
 
 from routers.auth import current_user_investigator
@@ -42,6 +41,7 @@ async def get_all_prediction_models():
     all_models = get_models_db()
     return {'models': all_models}
 
+
 @model_router.get("/tags", dependencies=[Depends(current_user_investigator)])
 async def get_available_prediction_models():
     """
@@ -68,7 +68,7 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
     # Start with error checking on the models list.
     # Ensure that all desired models are valid.
     if not models:
-        return HTTPException(status_code=400, detail="You must specify models to process images with")
+        return JSONResponse(status_code=400, content={"detail": "You must specify model(s) to create predictions on."})
 
     invalid_models = []
     for model in models:
@@ -76,8 +76,14 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
             invalid_models.append(model)
 
     if invalid_models:
-        error_message = "Invalid Models Specified: " + ''.join(invalid_models)
-        return HTTPException(status_code=400, detail=error_message)
+        number_invalid_models = str(len(invalid_models))
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": "Unable to connect to " + number_invalid_models + " model(s) that are provided.",
+                'invalid_models': invalid_models
+            }
+        )
 
     # Now we must hash each uploaded image
     # After hashing, we will store the image file on the server.
@@ -136,8 +142,8 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
                 'utility.main.predict_image', hash_md5, new_filename, job_id=hash_md5+model+str(uuid.uuid4())
             )
 
-
-    return {"images": [hashes_md5[key] for key in hashes_md5]}
+    # Return the image hash for each image that has been processed.
+    return {'images': [hashes_md5[key] for key in hashes_md5]}
 
 
 @model_router.post("/results", dependencies=[Depends(current_user_investigator)])
@@ -168,8 +174,8 @@ async def get_jobs(md5_hashes: List[str]):
             if md5_hash in job_id and Job.fetch(job_id, connection=redis).get_status() != 'finished':
                 found_pending_job = True
                 results.append({
-                    'status': 'success',
-                    'detail': 'Image has pending predictions. Check back later for all model results.',
+                    'id': md5_hash,
+                    'detail': 'Image has pending predictions. Check back later for results.',
                     **image.dict()
                 })
                 break  # Don't look for more jobs since we have found one that is pending
@@ -181,16 +187,16 @@ async def get_jobs(md5_hashes: List[str]):
         # If we haven't found a pending job for this image, and it doesn't exist in our database, then that
         # means that the image hash must be invalid.
         if not image:
-            results.append({
-                'status': 'failure',
-                'detail': 'Unknown md5 hash specified.',
-                'hash_md5': md5_hash
-            })
-            continue
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "detail": "Unable to connect to find resource with specified identifier.",
+                    'id': md5_hash
+                }
+            )
 
         # If everything is successful with image, return data
         results.append({
-            'status': 'success',
             **image.dict()
         })
     return results
@@ -229,22 +235,23 @@ def search_images(
 
     if page_id <= 0:
         return {
-            'status': 'success',
             'num_pages': num_pages,
             'page_size': page_size,
             'num_images': num_images
         }
     elif page_id > num_pages:
-        return {
-            'status': 'failure',
-            'detail': 'Page does not exist.',
-            'num_pages': num_pages,
-            'page_size': page_size,
-            'num_images': num_images,
-            'current_page': page_id}
+        return JSONResponse(
+            status_code=400,
+            content={
+                'detail': 'Page does not exist.',
+                'num_pages': num_pages,
+                'page_size': page_size,
+                'num_images': num_images,
+                'current_page': page_id
+            }
+        )
 
     return {
-        'status': 'success',
         'num_pages': num_pages,
         'page_size': page_size,
         'num_images': num_images,
@@ -269,10 +276,12 @@ def download_search_image_hashes(
     :return: List of image hashes associated with user
     """
     if search_string == '' and not search_filter:
-        return {
-            'status': 'failure',
-            'detail': 'You must specify a search string or search filter'
-        }
+        return JSONResponse(
+            status_code=400,
+            content={
+                'detail': 'You must specify a search string or search filter'
+            }
+        )
 
     if not search_filter:
         filter_to_use = {}
@@ -319,11 +328,9 @@ def register_model(model: MicroserviceConnection):
     :return: {'status': 'success'} if registration successful else {'status': 'failure'}
     """
 
-
     # Do not add duplicates of running models to server
     if model.name in settings.available_models:
         return {
-            "status": "success",
             'model': model.name,
             'detail': 'Model has already been registered.'
         }
@@ -331,14 +338,11 @@ def register_model(model: MicroserviceConnection):
     # Register model as available and add its queue
     settings.available_models.add(model.name)
     dependency.prediction_queues[model.name] = Queue(model.name, connection=redis)
-    logger.debug(model.modelTags)
     settings.models_tags[model.name] = model.modelTags
-    
 
     logger.debug("Model " + model.name + " successfully registered to server.")
 
     return {
-        "status": "success",
         'model': model.name,
         'detail': 'Model has been successfully registered to server.'
     }

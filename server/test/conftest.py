@@ -7,7 +7,7 @@ from db_connection import get_user_by_name_db, get_api_keys_by_user_db, add_imag
 from main import app
 from routers.auth import create_testing_account, create_testing_keys
 from routers.auth import (
-    get_current_active_user,
+    get_current_user,
     current_user_investigator,
     current_user_researcher,
     current_user_admin,
@@ -20,7 +20,7 @@ def test_configuration():
     create_testing_keys()  # Ensure API keys are created
 
     # Override all permissions to return the testing user object. This allows us to bypass the OAuth2 authentication
-    app.dependency_overrides[get_current_active_user] = override_logged_in_user
+    app.dependency_overrides[get_current_user] = override_logged_in_user
     app.dependency_overrides[current_user_investigator] = override_logged_in_user
     app.dependency_overrides[current_user_researcher] = override_logged_in_user
     app.dependency_overrides[current_user_admin] = override_logged_in_user

@@ -1,24 +1,26 @@
 import datetime
 import uuid
+import os
 
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import JSONResponse
+
 from typing import Optional
 from jose import JWTError, jwt
-from starlette import status
 
 from db_connection import get_user_by_name_db, add_user_db, set_user_roles_db, add_api_key_db, get_api_keys_by_user_db, \
     get_api_key_by_key_db, set_api_key_enabled_db
 
 from dependency import pwd_context, logger, oauth2_scheme, TokenData, User, CredentialException, Roles, \
     ExternalServices, APIKeyData
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 auth_router = APIRouter()
 
 # to get a string like this run: openssl rand -hex 32
-SECRET_KEY = "22013516088ae490602230e8096e61b86762f60ba48a535f0f0e2af32e87decd"
+SECRET_KEY = os.getenv('OAUTH2_SECRET_KEY')
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60*16  # 16 Hour Expiration
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv('OAUTH2_TOKEN_EXPIRATION_MINUTES'))
 
 
 # -------------------------------------------------------------------------------
@@ -70,15 +72,10 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise CredentialException()
     user = get_user_by_name_db(username=token_data.username)
-    if user is None:
+    if user is None or user.disabled:
         raise CredentialException()
+
     return user
-
-
-def get_current_active_user(current_user=Depends(get_current_user)):
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
 
 
 # -------------------------------------------------------------------------------
@@ -99,9 +96,6 @@ def current_user_investigator(token: str = Depends(oauth2_scheme)):
     """
     user = get_current_user(token)
     if not any(role in [Roles.admin.name, Roles.investigator.name] for role in user.roles):
-        logger.debug('User Roles')
-        logger.debug(user.roles)
-
         raise CredentialException()
 
     return user
@@ -158,21 +152,41 @@ def add_permission_to_user(username, role):
 
     user = get_user_by_name_db(username)
     if not user:
-        return {'status': 'failure', 'detail': 'User does not exist. Unable to modify permissions.'}
+        return JSONResponse(
+            status_code=404,
+            content={
+                'detail': 'Unable to find user with given username.',
+                'username': username
+            }
+        )
 
     # Ensure that the role name is valid
     if role not in list(Roles.__members__):
-        return {'status': 'failure', 'detail': 'Role specified does not exist. Unable to modify permissions.'}
+        return JSONResponse(
+            status_code=404,
+            content={
+                'detail': 'Unable to find role with given name.',
+                'valid_roles': list(Roles.__members__),
+                'invalid_role_provided': role
+            }
+        )
 
     if role in user.roles:
-        return {'status': 'success',
-                'detail': 'User ' + str(username) + ' already has role ' + str(role) + '. No changes made.'}
+        return {
+            'detail': 'User already has role. No changes made.',
+            'username': str(username),
+            'user_roles': user.roles
+        }
 
     user_new_role_list = user.roles.copy()
     user_new_role_list.append(role)
     set_user_roles_db(username, user_new_role_list)
-    return {'status': 'success',
-            'detail': 'User ' + str(username) + ' added to role ' + str(role) + '.'}
+
+    return {
+        'detail': 'User successfully added to role.',
+        'username': str(username),
+        'user_roles': user.roles
+    }
 
 
 @auth_router.post('/remove_role', dependencies=[Depends(current_user_admin)])
@@ -187,22 +201,42 @@ def remove_permission_from_user(username: str, role: str):
     """
 
     user = get_user_by_name_db(username)
+
     if not user:
-        return {'status': 'failure', 'detail': 'User does not exist. Unable to modify permissions.'}
+        return JSONResponse(
+            status_code=404,
+            content={
+                'detail': 'Unable to find user with given username.',
+                'username': username
+            }
+        )
 
     # Ensure that the role name is valid
     if role not in list(Roles.__members__):
-        return {'status': 'failure', 'detail': 'Role specified does not exist. Unable to modify permissions.'}
+        return JSONResponse(
+            status_code=404,
+            content={
+                'detail': 'Unable to find role with given name.',
+                'valid_roles': list(Roles.__members__),
+                'invalid_role_provided': role
+            }
+        )
 
     if role not in user.roles:
-        return {'status': 'success',
-                'detail': 'User ' + str(username) + ' does not have role ' + str(role) + '. No changes made.'}
+        return {
+            'detail': 'User does not have role. No changes made.',
+            'username': str(username),
+            'user_roles': user.roles
+        }
 
     user_new_role_list = user.roles.copy()
     user_new_role_list.remove(role)
     set_user_roles_db(username, user_new_role_list)
-    return {'status': 'success',
-            'detail': 'User ' + str(username) + ' removed from role ' + str(role) + '.'}
+    return {
+        'detail': 'Successfully removed role from user.',
+        'username': str(username),
+        'user_roles': user.roles
+    }
 
 
 @auth_router.post("/login")
@@ -213,24 +247,29 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     must log back in again.
 
     :param form_data: HTTP FormData containing login credentials
-    :return: {'status': 'success'} with OAuth2 bearer token if login successful, else HTTPException
+    :return: OAuth2 bearer token if login successful, else 401 unauthorized response
     """
     user = authenticate_user(form_data.username, form_data.password)
+
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password.",
-            headers={"WWW-Authenticate": "Bearer"},
+        return JSONResponse(
+            status_code=401,
+            content={
+                'detail': 'Unable to authenticate. Please ensure that username and password are correct.'
+            },
+            headers={"WWW-Authenticate": "Bearer"}
         )
+
     access_token_expires = datetime.timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    return {"status": 'success',
-            'detail': 'Successfully Logged In.',
-            "access_token": access_token,
-            "token_type": "bearer"
-            }
+
+    return {
+        'detail': 'Login successful.',
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 
 @auth_router.post('/new')
@@ -258,24 +297,36 @@ def create_account(username: str, password: str, email: str = None, full_name: s
     result = add_user_db(u)
 
     if not result:
-        return {'status': 'failure', 'detail': 'Account  with this username already exists'}
+        return JSONResponse(
+            status_code=409,
+            content={
+                'detail': 'Account with given username already exists. Please select a name that is not in use.',
+                'username': username
+            },
+        )
 
-    return {'status': 'success', 'detail': 'account with username [' + username + '] created.'}
+    return {
+        'detail': 'Account created successfully.',
+        'username': username
+    }
 
 
-@auth_router.get("/status", dependencies=[Depends(get_current_active_user)])
-def get_login_status():
+@auth_router.get("/status")
+def get_login_status(current_user: User = Depends(get_current_user)):
     """
     Check if the current user is authenticated.
 
-    :return: {'status': 'success'} if logged in, else dependency.CredentialException
+    :return: Current username if logged in, else dependency.CredentialException
     """
 
-    return {'status': 'success', 'detail': 'User is Authenticated.'}
+    return {
+        'detail': 'Authentication successful.',
+        'username': current_user.username
+    }
 
 
 @auth_router.get("/profile")
-def get_current_user_profile(current_user: User = Depends(get_current_active_user)):
+def get_current_user_profile(current_user: User = Depends(get_current_user)):
     """
     Export the data of the current user to the client.
 
@@ -302,25 +353,30 @@ def add_api_key(key_owner_username: str, service: str, detail: str = ""):
     :param key_owner_username: Username of user who 'owns' this API Key
     :param service: dependency.ExternalService object name of microservice this key is associated with
     :param detail: (optional) A brief description of what the key is used for
-    :return: {'status': 'success'} with key data if created, else {'status': 'failure'}
+    :return: Key data if successful. Else, HTTP exception
     """
 
     user = get_user_by_name_db(key_owner_username)
 
     if not user:
-        return {
-            'status': 'failure',
-            'detail': 'Desired Key owner username does not exist. Unable to create API key.',
-            'username': key_owner_username
-        }
+        return JSONResponse(
+            status_code=404,
+            content={
+                'detail': 'Desired Key owner username does not exist. Unable to create API key.',
+                'username': key_owner_username
+            }
+        )
 
     # Ensure that the service name for the key is valid
     if service not in list(ExternalServices.__members__):
-        return {
-            'status': 'failure',
-            'detail': 'Service specified does not exist. Unable to create API key.',
-            'service': service
-        }
+        return JSONResponse(
+            status_code=404,
+            content={
+                'detail': 'Service specified does not exist. Unable to create API key.',
+                'valid_services': list(ExternalServices.__members__),
+                'invalid_service_in_request': service
+            }
+        )
 
     api_key_string = str(uuid.uuid4())
 
@@ -337,18 +393,19 @@ def add_api_key(key_owner_username: str, service: str, detail: str = ""):
     # If successful, return success message and the API key object
     if result['status'] == 'success':
         return {
-            'status': 'success',
             **api_key_object.dict()
         }
-
-    return {
-        'status': 'failure',
-        'detail': 'API Key Creation Database Error. Please contact an administrator.'
-    }
+    else:
+        return JSONResponse(
+            status_code=500,
+            content={
+                'detail': 'Unable to add API key.',
+            }
+        )
 
 
 @auth_router.get('/key')
-def get_api_key(current_user: User = Depends(get_current_active_user)):
+def get_api_key(current_user: User = Depends(get_current_user)):
     """
     Gets all API keys associated with the user making the request. This method will only return keys
     that are in good standing and that are enabled.
@@ -359,13 +416,12 @@ def get_api_key(current_user: User = Depends(get_current_active_user)):
     all_user_keys = get_api_keys_by_user_db(current_user)
 
     return {
-        'status': 'success',
         'keys': all_user_keys
     }
 
 
 @auth_router.delete('/key')
-def disable_api_key(key: str, current_user: User = Depends(get_current_active_user)):
+def disable_api_key(key: str, current_user: User = Depends(get_current_user)):
     """
     Disables an existing API Key. This requires that either the user making the request is the API Key owner or
     that the user making the request is an administrator. This does not delete the key from the database, but leaves
@@ -373,16 +429,18 @@ def disable_api_key(key: str, current_user: User = Depends(get_current_active_us
 
     :param key: API Key string to disable
     :param current_user: Currently logged in user. This is automatically parsed from the request.
-    :return: {'status': 'success'} if disabled successfully, else HTTP Exception
+    :return: success response if disabled successfully, else HTTP Exception
     """
     key = get_api_key_by_key_db(key)
 
     if not key:
-        return {
-            'status': 'failure',
-            'detail': 'Invalid API key provided. Unable to delete.',
-            'key': key
-        }
+        return JSONResponse(
+            status_code=404,
+            content={
+                'detail': 'Invalid API key provided. Unable to delete',
+                'key': key
+            }
+        )
 
     # If it is not the user's key and they are not an admin, then don't allow key to be disabled.
     if key.user != current_user.username and Roles.admin.name not in current_user.roles:
@@ -390,7 +448,6 @@ def disable_api_key(key: str, current_user: User = Depends(get_current_active_us
 
     set_api_key_enabled_db(key, False)
     return {
-        'status': 'success',
         'detail': 'API key has been removed.',
         'key': key,
     }
@@ -407,11 +464,14 @@ def disable_api_key(key: str, current_user: User = Depends(get_current_active_us
 def create_admin_account_testing():
 
     if get_user_by_name_db('admin'):
-        return {
-            'status': 'failure',
-            'detail': 'Admin account already exists.',
-            'account': 'Username: "admin", Password: "password"'
-        }
+        return JSONResponse(
+            status_code=409,
+            content={
+                'detail': 'Admin account already exists.',
+                'username': 'admin',
+                'password': 'password'
+            }
+        )
 
     u = User(
         username='admin',
@@ -423,10 +483,11 @@ def create_admin_account_testing():
     add_user_db(u)
 
     return {
-        'status': 'success',
         'detail': 'Admin account has been created.',
-        'account': 'Username: "admin", Password: "password"'
+        'username': 'admin',
+        'password': 'password'
     }
+
 
 def create_testing_account():
     """
@@ -447,6 +508,7 @@ def create_testing_account():
 
         add_user_db(u)
 
+
 def create_testing_keys():
     """
     Creates API keys for usage in test cases. These keys should NEVER be used for actual microservices.
@@ -464,7 +526,6 @@ def create_testing_keys():
         add_user_db(u)
     else:
         u = get_user_by_name_db('api_key_testing')
-
 
     # If keys do not already exist, create them
     if not get_api_keys_by_user_db(u):
