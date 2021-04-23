@@ -146,6 +146,7 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
     return {'images': [hashes_md5[key] for key in hashes_md5]}
 
 
+# TODO: Update header to use correct HTTP method (GET)
 @model_router.post("/results", dependencies=[Depends(current_user_investigator)])
 async def get_jobs(md5_hashes: List[str]):
     """
@@ -157,7 +158,12 @@ async def get_jobs(md5_hashes: List[str]):
     results = []
 
     if not md5_hashes:
-        return []
+        return JSONResponse(
+            status_code=400,
+            content={
+                'detail': 'Please provide a list of image hashes to create prediction on.'
+            }
+        )
 
     # If there are any pending predictions, alert user and return existing ones
     # Since job_id is a composite hash+model, we must loop and find all jobs that have the
@@ -190,7 +196,7 @@ async def get_jobs(md5_hashes: List[str]):
             return JSONResponse(
                 status_code=404,
                 content={
-                    "detail": "Unable to connect to find resource with specified identifier.",
+                    "detail": "Unable to find prediction resource with specified identifier.",
                     'id': md5_hash
                 }
             )
