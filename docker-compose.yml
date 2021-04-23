@@ -147,7 +147,26 @@ services:
       - SERVER_SOCKET=${SERVER_SOCKET}
     depends_on:
       - redis
-      - server                          
+      - server   
+      
+  worker_object_detection:
+    container_name: ${PREDICTION_OBJECT_DETECTION}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction_worker/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_OBJECT_DETECTION}
+    volumes:
+      - ./prediction/models/${PREDICTION_OBJECT_DETECTION}:/app/model
+      - prediction_images:/app/images
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
 
   # ------------------------------------------------------------------------------
   #           Training Microservices
