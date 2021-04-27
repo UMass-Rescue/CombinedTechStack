@@ -87,7 +87,7 @@ const Import = () => {
     useEffect(() => {
         axios.request({
                 method: 'get', 
-                url: baseurl + api['model_image_list'], 
+                url: baseurl + api['model_video_list'], 
                 headers: { Authorization: 'Bearer ' + Auth.token } 
             }).then((response) => {
                 setModelsAvailable(response.data['models']);
@@ -204,7 +204,7 @@ const Import = () => {
                             <Card className={classes.headerGridCard}>
                                 <CardContent>
                                     <Typography variant="h3">
-                                        1. Add Images
+                                        1. Add Videos
                                 </Typography>
                                 </CardContent>
                             </Card>

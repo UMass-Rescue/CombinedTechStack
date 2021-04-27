@@ -33,6 +33,30 @@ async def get_available_prediction_models():
     """
     return {"models": [*settings.available_models]}
 
+@model_router.get("/list/image", dependencies=[Depends(current_user_investigator)])
+async def get_available_image_models():
+    """
+    Returns list of available models to the client. This list can be used when calling get_prediction,
+    with the request
+    """
+    imageModels = []
+    for (key, value) in settings.model_types.items():
+        if value == "image":
+            imageModels.append(key)
+    return {"models": imageModels}
+
+@model_router.get("/list/video", dependencies=[Depends(current_user_investigator)])
+async def get_available_video_models():
+    """
+    Returns list of available models to the client. This list can be used when calling get_prediction,
+    with the request
+    """
+    videoModels = []
+    for (key, value) in settings.model_types.items():
+        if value == "video":
+            videoModels.append(key)
+    return {"models": videoModels}
+
 
 @model_router.get("/all", dependencies=[Depends(current_user_investigator)])
 async def get_all_prediction_models():
@@ -43,11 +67,18 @@ async def get_all_prediction_models():
     return {'models': all_models}
 
 @model_router.get("/tags", dependencies=[Depends(current_user_investigator)])
-async def get_available_prediction_models():
+async def get_prediction_model_tags():
     """
     Returns list of tags for each available model
     """
     return {"tags": settings.models_tags}
+
+@model_router.get("/types", dependencies=[Depends(current_user_investigator)])
+async def get_prediction_model_types():
+    """
+    Returns list of types for each available model
+    """
+    return {"types": settings.model_types}
 
 
 @model_router.post("/predict")
@@ -333,6 +364,8 @@ def register_model(model: MicroserviceConnection):
     dependency.prediction_queues[model.name] = Queue(model.name, connection=redis)
     logger.debug(model.modelTags)
     settings.models_tags[model.name] = model.modelTags
+    logger.debug(model.modelTypes)
+    settings.model_types[model.name] = model.modelTypes
     
 
     logger.debug("Model " + model.name + " successfully registered to server.")

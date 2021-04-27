@@ -1,7 +1,7 @@
 import os
 import requests
 from model.model import predict, init
-from model.config import model_name, model_tags
+from model.config import model_name, model_tags, model_type
 from worker import shutdown
 import time
 
@@ -21,7 +21,7 @@ def register_to_server():
             r = requests.post(
                 SERVER_SOCKET + '/model/register',
                 headers=headers,
-                json={'name': model_name, "modelTags": model_tags}
+                json={'name': model_name, "modelTags": model_tags, "modelTypes": model_type}
             )
             r.raise_for_status()
             if r.status_code != 200:
