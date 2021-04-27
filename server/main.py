@@ -30,23 +30,25 @@ app = FastAPI()
 #
 # --------------------------------------------------------------------------
 
+API_VERSION = "v1"
+
 app.include_router(
     auth_router,
-    prefix="/auth",
+    prefix="/" + API_VERSION + "/auth",
     tags=["auth"],
     responses={404: {"detail": "Not found"}},
 )
 
 app.include_router(
     model_router,
-    prefix="/model",
+    prefix="/" + API_VERSION + "/predictions",
     tags=["models"],
     responses={404: {"detail": "Not found"}},
 )
 
 app.include_router(
     training_router,
-    prefix="/training",
+    prefix="/" + API_VERSION + "/datasets",
     tags=["training"],
     responses={404: {"detail": "Not found"}},
 )
@@ -113,6 +115,11 @@ async def root():
     return {
         "detail": 'PhotoAnalysisServer is Running'
     }
+
+
+@app.get('/api')
+async def generate_api_docs():
+    return app.openapi()
 
 
 def delete_unused_files():
