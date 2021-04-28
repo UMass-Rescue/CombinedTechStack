@@ -11,7 +11,7 @@ import {
     Box,
     Chip
 } from '@material-ui/core';
-import ImageDropzone from "../../components/ImageDropzone/ImageDropzone";
+import VideoDropzone from "../../components/VideoDropzone/VideoDropzone";
 import Card from "@material-ui/core/Card";
 import Table from "@material-ui/core/Table";
 import TableRow from "@material-ui/core/TableRow";
@@ -87,7 +87,7 @@ const Import = () => {
     useEffect(() => {
         axios.request({
                 method: 'get', 
-                url: baseurl + api['model_image_list'], 
+                url: baseurl + api['model_video_list'], 
                 headers: { Authorization: 'Bearer ' + Auth.token } 
             }).then((response) => {
                 setModelsAvailable(response.data['models']);
@@ -190,7 +190,7 @@ const Import = () => {
     return (
         <div className={classes.root}>
 
-            <ImageDropzone filelistfunction={addFilesToUpload} />
+            <VideoDropzone filelistfunction={addFilesToUpload} />
 
             <div style={{ marginTop: '1em' }}>
                 <Box display={{xs: 'none', md: 'block'}}>
@@ -204,7 +204,7 @@ const Import = () => {
                             <Card className={classes.headerGridCard}>
                                 <CardContent>
                                     <Typography variant="h3">
-                                        1. Add Images
+                                        1. Add Videos
                                 </Typography>
                                 </CardContent>
                             </Card>

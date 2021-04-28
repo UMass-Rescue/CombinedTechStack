@@ -28,7 +28,31 @@ async def get_available_prediction_models():
     Returns list of available models to the client. This list can be used when calling get_prediction,
     with the request
     """
-    return {"models": [*set(chain.from_iterable(settings.available_models.values()))]} 
+    return {"models": [*settings.available_models]} 
+
+@model_router.get("/list/image", dependencies=[Depends(current_user_investigator)])
+async def get_available_image_models():
+    """
+    Returns list of available models to the client. This list can be used when calling get_prediction,
+    with the request
+    """
+    imageModels = []
+    for (key, value) in settings.model_types.items():
+        if value == "image":
+            imageModels.append(key)
+    return {"models": imageModels}
+
+@model_router.get("/list/video", dependencies=[Depends(current_user_investigator)])
+async def get_available_video_models():
+    """
+    Returns list of available models to the client. This list can be used when calling get_prediction,
+    with the request
+    """
+    videoModels = []
+    for (key, value) in settings.model_types.items():
+        if value == "video":
+            videoModels.append(key)
+    return {"models": videoModels}
 
 
 @model_router.get("/all", dependencies=[Depends(current_user_investigator)])
@@ -38,6 +62,22 @@ async def get_all_prediction_models():
     """
     all_models = get_models_db()
     return {'models': all_models}
+
+
+@model_router.get("/tags", dependencies=[Depends(current_user_investigator)])
+async def get_prediction_model_tags():
+    """
+    Returns list of tags for each available model
+    """
+    return {"tags": settings.models_tags}
+
+@model_router.get("/types", dependencies=[Depends(current_user_investigator)])
+async def get_prediction_model_types():
+    """
+    Returns list of types for each available model
+    """
+    return {"types": settings.model_types}
+
 
 @model_router.post("/predict")
 def create_new_prediction(objects: List[UploadFile] = File(...),
@@ -54,7 +94,7 @@ def create_new_prediction(objects: List[UploadFile] = File(...),
     :return: Unique keys for each object uploaded in objects.
     """
 
-    #TODO: check file type and make sure it aligns with model type
+    
 
     # Start with error checking on the models list.
     # Ensure that all desired models are valid.
@@ -63,15 +103,15 @@ def create_new_prediction(objects: List[UploadFile] = File(...),
 
     invalid_models = []
     for model in models:
-        print(settings.available_models)
-        print(settings.available_models[file_type])
-        if model not in settings.available_models[file_type]: 
+        if model not in settings.available_models: 
             invalid_models.append(model)
-
+  
     if invalid_models:
         error_message = "Invalid Models Specified: " + ''.join(invalid_models)
         return HTTPException(status_code=400, detail=error_message)
-
+    
+    #TODO: check file type and make sure it aligns with model type
+    
     # Now we must hash each uploaded object
     # After hashing, we will store the object file on the server.
 
@@ -152,12 +192,11 @@ async def get_jobs(md5_hashes: List[str]):
     # Since job_id is a composite hash+model, we must loop and find all jobs that have the
     # hash we want to find. We must get all running and pending jobs to return the correct value
     all_jobs = set()
-    for model in set(chain.from_iterable(settings.available_models.values())):
+    for model in settings.available_models:
         all_jobs.update(StartedJobRegistry(model, connection=redis).get_job_ids() + dependency.prediction_queues[model].job_ids)
 
     for md5_hash in md5_hashes:
 
-        #TO DO: change this function to not take type
         object = get_object_by_md5_hash_db(md5_hash)  # Get object
         found_pending_job = False
         for job_id in all_jobs:
@@ -316,17 +355,19 @@ def register_model(model: MicroserviceConnection):
     """
 
     # Do not add duplicates of running models to server
-    if model.name in settings.available_models[model.type]:
+    if model.name in settings.available_models:
         return {
             "status": "success",
             'model': model.name,
             'detail': 'Model has already been registered.'
         }
 
-
     # Register model as available and add its queue
-    settings.available_models[model.type].add(model.name)
+    settings.available_models.add(model.name)
     dependency.prediction_queues[model.name] = Queue(model.name, connection=redis)
+    settings.models_tags[model.name] = model.modelTags
+    settings.model_types[model.name] = model.modelTypes
+    
 
     logger.debug("Model " + model.name + " successfully registered to server.")
 

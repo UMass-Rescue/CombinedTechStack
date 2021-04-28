@@ -22,6 +22,11 @@ def init():
     """
     # Placeholder init code. Replace the sleep with check for model files required etc...
     time.sleep(1)
+    global __tokenizer 
+    __tokenizer = Wav2Vec2Tokenizer.from_pretrained("facebook/wav2vec2-base-960h")
+    global __model 
+    __model = Wav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-base-960h")
+
 
 
 def predict(prediction_input):
@@ -46,9 +51,10 @@ def predict(prediction_input):
     # text_input = prediction_input  # If text model
     # image = Image.open('/app/images/' + prediction_input)  # If image model
 
-    print("PREDICTING")
 
-    video = mp.VideoFileClip('/app/videos/' + prediction_input)
+    video = mp.VideoFileClip('/app/images/' + prediction_input)
+    print(video, flush=True)
+
 
     # import os
     # print(os.getcwd())
@@ -60,13 +66,15 @@ def predict(prediction_input):
     # Loading the audio file
     audio, rate = librosa.load("short1.wav", sr = 16000)
 
-    print("Loaded audio file")
-
     # Importing Wav2Vec pretrained model
-    tokenizer = Wav2Vec2Tokenizer.from_pretrained("facebook/wav2vec2-base-960h")
-    model = Wav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-base-960h")
+
 
     def asr_transcript(tokenizer, model, input_file):
+        if(not tokenizer):
+            print("Not receving tokenizer", flush = True)
+
+
+
         transcript = ""
         pre, rate = librosa.load(input_file, sr= 16000)
         sf.write("temp1.wav", pre, rate )
@@ -88,7 +96,9 @@ def predict(prediction_input):
         return transcript
 
 
-    short1_trans = asr_transcript(tokenizer, model, "short1.wav")
+
+    short1_trans = asr_transcript(__tokenizer, __model, "short1.wav")
+
 
     
     # file1 = open("speech.txt", "w")
@@ -105,6 +115,7 @@ def predict(prediction_input):
             NER_dict[entities.label_].append(entities.text)
 
 
+    print(NER_dict, flush = True)
     return {
         'classes': ['DATE', 'PERSON', 'GPE', 'ORG', 'TIME', 'LOC', 'LANGUAGE', 'PRODUCT'],  # List every class in the classifier
         'result': NER_dict

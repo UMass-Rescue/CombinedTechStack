@@ -43,8 +43,10 @@ class Settings(BaseSettings):
     BaseSettings used to hold available models and datasets for training and prediction.
     """
 
-    available_models = {x:set() for x in available_types}
+    available_models = set()
     available_datasets = {}
+    models_tags = {}
+    model_types = {}
 
 
 settings = Settings()
@@ -81,7 +83,9 @@ class MicroserviceConnection(BaseModel):
 
     name: str = Field(alias="modelName")
     socket: Optional[str] = Field(alias="modelSocket")
-    type: constr(regex=regex_available_types)
+    modelTags: Optional[str]= ''
+    modelTypes: constr(regex=regex_available_types)
+
 
     class Config:
         allow_population_by_field_name = True

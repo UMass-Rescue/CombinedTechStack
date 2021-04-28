@@ -11,6 +11,8 @@ def init():
     """
 
     # Placeholder init code. Replace the sleep with check for model files required etc...
+    global __model
+    __model = 1
     time.sleep(1)
 
 
@@ -30,6 +32,6 @@ def predict(image_file_name):
         'classes': ['isGreen', 'isRed'],  # List every class in the classifier
         'result': {  # For results, use the class names above with the result value
             'isGreen': 0,
-            'isRed': 1
+            'isRed': __model  # Note that we reference the variable we used in init(). This will be returned as 1.
         }
     }
