@@ -4,6 +4,7 @@ import shutil
 from itertools import chain
 
 from rq.registry import StartedJobRegistry
+import filetype
 
 import dependency
 from fastapi import File, UploadFile, HTTPException, Depends, APIRouter
@@ -110,18 +111,25 @@ def create_new_prediction(objects: List[UploadFile] = File(...),
         error_message = "Invalid Models Specified: " + ''.join(invalid_models)
         return HTTPException(status_code=400, detail=error_message)
     
-    #TODO: check file type and make sure it aligns with model type
-    
+    model_types = set([settings.model_types[model] for model in models])
+    if len(model_types) != 1:
+        error_message = "Multiple Model Types Specified: " + ''.join(model_types)
+        return HTTPException(status_code=400, detail=error_message)
+    model_type = model_types.pop()
     # Now we must hash each uploaded object
     # After hashing, we will store the object file on the server.
 
     buffer_size = 65536  # Read object data in 64KB Chunks for hashlib
     hashes_md5 = {}
 
+    #TODO: check file type and make sure it aligns with model type
     # Process uploaded objects
     for upload_file in objects:
         file = upload_file.file
-        file_type = file_type
+        file_type = filetype.guess(file).mime.split("/")[0]
+        if model_type != file_type:
+            error_message = "Invalid type for object: " + upload_file.filename + 'is type:' + file_type
+            return HTTPException(status_code=400, detail=error_message)
         md5 = hashlib.md5()
         while True:
             data = file.read(buffer_size)
@@ -366,7 +374,7 @@ def register_model(model: MicroserviceConnection):
     settings.available_models.add(model.name)
     dependency.prediction_queues[model.name] = Queue(model.name, connection=redis)
     settings.models_tags[model.name] = model.modelTags
-    settings.model_types[model.name] = model.modelTypes
+    settings.model_types[model.name] = model.modelType
     
 
     logger.debug("Model " + model.name + " successfully registered to server.")

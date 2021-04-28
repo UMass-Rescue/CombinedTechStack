@@ -84,7 +84,7 @@ class MicroserviceConnection(BaseModel):
     name: str = Field(alias="modelName")
     socket: Optional[str] = Field(alias="modelSocket")
     modelTags: Optional[str]= ''
-    modelTypes: constr(regex=regex_available_types)
+    modelType: constr(regex=regex_available_types)
 
 
     class Config:

@@ -154,7 +154,7 @@ const Import = () => {
                     if (currIndex >= filesToUpload.length) {
                         break;
                     }
-                    formData.append('images', filesToUpload[currIndex]);
+                    formData.append('objects', filesToUpload[currIndex]);
                     fileNames.push(filesToUpload[currIndex].name);
                 }
                 for (let i = 0; i < modelsToUse.length; i++) {

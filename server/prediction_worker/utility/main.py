@@ -20,7 +20,7 @@ def register_to_server():
             r = requests.post(
                 SERVER_SOCKET + '/model/register',
                 headers=headers,
-                json={'name': model_name, "modelTags": model_tags, "modelTypes": model_type}
+                json={'name': model_name, "modelTags": model_tags, "modelType": model_type})
 
             r.raise_for_status()
             if r.status_code != 200:
@@ -41,8 +41,9 @@ def register_to_server():
 def send_prediction(hash, file_name, type):
     # try:
 
-    result = predict(file_name)  # Create prediction on model
-    
+    print("sending prediction")
+    result = predict("/app/objects/"+file_name)  # where all prediction objects are stored
+    print("got prediction:"+result)
     # except:
     #     # Do not send prediction results to server on crash. 
     #     print('[Error] Model Prediction Crash. Model: [' + model_name + '] Hash:[' + image_hash + ']')

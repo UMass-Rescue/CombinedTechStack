@@ -29,46 +29,40 @@ def init():
 
 
 
-def predict(prediction_input):
+def predict(prediction_object_path):
     """
     Interface method between model and server. This signature must not be
-    changed and your model must be able to create a prediction from the image
-    file or text that is passed in.
+    changed and your model must be able to create a prediction from the object
+    file that is passed in.
 
     Depending on the model type as defined in model/config.py, this method will receive a different input:
 
-    'image'  :  Model receives a file name to an image file, opens it, and creates a prediction
+    'object'  :  Model receives a file name to an image file, opens it, and creates a prediction
     'text'   :  Model receives a string of text and uses it to create a prediction.
 
 
-    Note: All images are stored in the directory '/app/images/' in the Docker container. You may assume that the file
-    name that is passed to this method is valid and that the image file exists.
-
-    Example code for opening the image using PIL:
-    image = Image.open('/app/images/'+image_file_name)
+    Note: All objects are stored in the directory '/app/objects/' in the Docker container. You may assume that the file
+    path that is passed to this method is valid and that the image file exists.
     """
 
-    # text_input = prediction_input  # If text model
-    # image = Image.open('/app/images/' + prediction_input)  # If image model
+    print("Starting prediction")
+    video = mp.VideoFileClip(prediction_object)
+    print("VIDEO:", video, flush=True)
 
 
-    video = mp.VideoFileClip('/app/images/' + prediction_input)
-    print(video, flush=True)
-
-
-    # import os
-    # print(os.getcwd())
-    # video = mp.VideoFileClip('ex1.mp4')
+    print("video.audio")
     ex_aud = video.audio
 
+    print("writing audio file")
     ex_aud.write_audiofile("short1.wav")
 
     # Loading the audio file
+    print("loading audio file")
     audio, rate = librosa.load("short1.wav", sr = 16000)
 
     # Importing Wav2Vec pretrained model
 
-
+    print("creating asr transcript func")
     def asr_transcript(tokenizer, model, input_file):
         if(not tokenizer):
             print("Not receving tokenizer", flush = True)
@@ -95,11 +89,11 @@ def predict(prediction_input):
 
         return transcript
 
-
+    print("running asr transcript funct")
 
     short1_trans = asr_transcript(__tokenizer, __model, "short1.wav")
 
-
+    print("have transcript")
     
     # file1 = open("speech.txt", "w")
     # file1.write(short1_trans)

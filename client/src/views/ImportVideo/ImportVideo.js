@@ -52,12 +52,12 @@ const useStyles = makeStyles(theme => ({
         overflow: 'auto',
         maxHeight: '45vh',
     },
-    imageListContainer: {
+    videoListContainer: {
         width: '100%',
         height: '55vh',
         borderRadius: '0.6em',
     },
-    imageListTable: {
+    videoListTable: {
         overflow: 'auto',
         maxHeight: '45vh',
     },
@@ -80,7 +80,7 @@ const Import = () => {
     const [filesUploaded, setFilesUploaded] = useState([]); // Files successfully uploaded to server
     const [modelsAvailable, setModelsAvailable] = useState([]);  // Models available from the photoanalysisserver
     const [modelsToUse, setModelsToUse] = useState([]);  // Models for the photoanalysisserver to use on uploads
-    const [open, setOpen] = useState(false); // Handles state of image upload snackbar
+    const [open, setOpen] = useState(false); // Handles state of video upload snackbar
     const [allChecked, setAllChecked] = useState(false); // If all models are selected
     const [modelsTags, setModelsTags] = useState({}); // Models tags from the photoanalysisserver
 
@@ -133,16 +133,16 @@ const Import = () => {
     }
 
 
-    function uploadImages() {
+    function uploadVideos() {
 
         const requestURL = baseurl + api['model_predict'];
         let currIndex = 0;
         while (currIndex < filesToUpload.length) {
 
-            // Upload images in batches of 3
-            for (let imageCount = 0; imageCount < 3; imageCount++) {
+            // Upload videos in batches of 3
+            for (let videoCount = 0; videoCount < 3; videoCount++) {
 
-                // Ensure we have an image to upload
+                // Ensure we have an video to upload
                 if (currIndex >= filesToUpload.length) {
                     break;
                 }
@@ -154,7 +154,7 @@ const Import = () => {
                     if (currIndex >= filesToUpload.length) {
                         break;
                     }
-                    formData.append('images', filesToUpload[currIndex]);
+                    formData.append('objects', filesToUpload[currIndex]);
                     fileNames.push(filesToUpload[currIndex].name);
                 }
                 for (let i = 0; i < modelsToUse.length; i++) {
@@ -182,7 +182,7 @@ const Import = () => {
         setOpen(false);
     };
 
-    function handleRemoveImage(filename) {
+    function handleRemoveVideo(filename) {
         const newList = filesToUpload.filter((item) => item.name !== filename);
         setFilesToUpload(newList);
     }
@@ -199,7 +199,7 @@ const Import = () => {
                         spacing={2}
                     >
 
-                        {/*Header Card: Images*/}
+                        {/*Header Card: Videos*/}
                         <Grid item md={4}>
                             <Card className={classes.headerGridCard}>
                                 <CardContent>
@@ -240,15 +240,15 @@ const Import = () => {
                 display="flex"
                 >
 
-                    {/*Train Images*/}
+                    {/*Train Videos*/}
                     <Grid item xs={12} md={4}>
-                        <Card className={classes.imageListContainer}>
+                        <Card className={classes.videoListContainer}>
                             <CardContent>
                                 <Typography variant="h5" style={{ marginBottom: '1em' }}>
-                                    Images
+                                    Videos
                                 </Typography>
 
-                                <TableContainer className={classes.imageListTable}>
+                                <TableContainer className={classes.videoListTable}>
                                     <Table stickyHeader aria-label="sticky table">
                                         <TableHead>
                                             <TableRow>
@@ -268,7 +268,7 @@ const Import = () => {
                                                                 <CheckCircleOutlineIcon />
                                                             </IconButton>
                                                         ) ||
-                                                            <IconButton aria-label="delete"  size="small" onClick={() => { handleRemoveImage(fileObject.name) }}>
+                                                            <IconButton aria-label="delete"  size="small" onClick={() => { handleRemoveVideo(fileObject.name) }}>
                                                               <DeleteIcon />
                                                             </IconButton>
                                                         }
@@ -369,13 +369,13 @@ const Import = () => {
                         </Card >
                     </Grid>
 
-                    {/* Upload Images*/}
+                    {/* Upload Videos*/}
                     <Grid item xs={12} md={4}>
                         <Card className={classes.uploadButtonContainer}>
                             <CardContent>
                                 <Button
                                     variant="contained" color="primary" type="button"
-                                    onClick={uploadImages} disabled={filesToUpload.length === 0 || modelsToUse.length === 0}
+                                    onClick={uploadVideos} disabled={filesToUpload.length === 0 || modelsToUse.length === 0}
                                     style={{ marginLeft: '30%', width: '40%'}}
                                 >
                                     Upload
@@ -389,7 +389,7 @@ const Import = () => {
 
                 <Snackbar open={open} autoHideDuration={6000} onClose={handleSnackbarClose} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
                     <Alert onClose={handleSnackbarClose} severity="success">
-                        <Typography variant="h5" component="h4">Images Successfully Uploaded</Typography>
+                        <Typography variant="h5" component="h4">Videos Successfully Uploaded</Typography>
                     </Alert>
                 </Snackbar>
 

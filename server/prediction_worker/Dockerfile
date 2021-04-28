@@ -12,6 +12,8 @@ ARG MODEL_NAME
 # Copy the specific requirements file to our container for installing.
 COPY "../../prediction/models/${MODEL_NAME}/requirements.txt" /app
 
-# Install requirements.
+# Include this line if using opencv for a video model.
 RUN apt-get -y update && apt-get install -y python3-opencv
+
+# Install requirementss
 RUN pip --no-cache-dir install -r requirements.txt
