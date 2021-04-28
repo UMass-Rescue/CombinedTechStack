@@ -12,8 +12,7 @@ from rq import Worker
 from routers.auth import current_user_investigator
 from dependency import User, UniversalMLImage, redis
 from db_connection import add_image_db, add_user_to_image, get_images_from_user_db, get_image_by_md5_hash_db, \
-    get_api_key_by_key_db, add_filename_to_image, add_model_to_image_db, get_models_db, add_model_db, \
-    update_tags_to_image, update_role_to_tag_image
+    add_filename_to_image, get_models_db, update_tags_to_image, update_role_to_tag_image
 from typing import List
 from rq import Queue
 import uuid
@@ -294,41 +293,6 @@ def download_search_image_hashes(
         'status': 'success',
         'hashes': hashes
     }
-
-
-def get_api_key(api_key_header: str = Depends(dependency.api_key_header_auth)):
-    """
-    Validates an API key contained in the header. This also ensures that the API key is authorized to
-    make prediction requests.
-
-    :param api_key_header: Request header containing {'API_KEY': 'someKeyValue'}
-    :return: APIKeyData object on success, else will raise HTTP CredentialException
-    """
-
-    api_key_data = get_api_key_by_key_db(api_key_header)
-    if not api_key_data or not api_key_data.enabled or api_key_data.type != dependency.ExternalServices.predict_microservice.name:
-        raise dependency.CredentialException
-    return api_key_data
-
-
-@model_router.post('/predict_result', dependencies=[Depends(get_api_key)])
-def receive_prediction_results(model_prediction_result: dependency.ModelPredictionResult):
-    """
-    Helper method that a worker will use to generate a prediction for a given model. This will be run in a task
-    by any redis queue worker that is registered.
-
-    :param model_prediction_result Prediction results from server
-    """
-
-    # Receive Prediction from Model
-    model_result = model_prediction_result.results['result']
-    model_classes = model_prediction_result.results['classes']
-
-    # Store result of model prediction into database
-    if dependency.image_collection.find_one({"hash_md5": model_prediction_result.image_hash}):
-        image_object = get_image_by_md5_hash_db(model_prediction_result.image_hash)
-        add_model_to_image_db(image_object, model_prediction_result.model_name, model_result)
-        add_model_db(model_prediction_result.model_name, model_classes)
 
 
 @model_router.post("/tag/update")
