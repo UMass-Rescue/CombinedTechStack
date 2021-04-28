@@ -6,7 +6,7 @@ from typing import Optional, List, Dict
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.security import APIKeyHeader
 from passlib.context import CryptContext
-from pydantic import BaseModel, BaseSettings, typing, Field
+from pydantic import BaseModel, BaseSettings, typing, Field, constr
 from pymongo import MongoClient
 import os
 
@@ -14,6 +14,8 @@ from rq import Queue
 import redis as rd
 
 logger = logging.getLogger("api")
+available_types = ['video','audio','text','image'] #TODO: convert to enum e.g. userType
+regex_available_types = r'^\b'+ r'\b|^\b'.join(available_types) +r'\b'
 
 # --------------------------------------------------------------------------------
 #                                  Database Objects
@@ -26,10 +28,7 @@ user_collection = database["users"]  # Create collection for users in database
 api_key_collection = database["api_key"]  # Create collection for API keys in database
 model_collection = database[ "models"]  # Create collection for models and their structures in database
 training_collection = database[ "training"]  # Create collection for training status and results
-object_collections = database["collections"]  # Create collection for objects in database
-
-object_collections["image"] # sub-collection for images
-object_collections["video"] # sub-collection for videos
+object_collection = database["collections"]  # Create collection for objects in database
 
 PAGINATION_PAGE_SIZE = 15
 
@@ -44,7 +43,7 @@ class Settings(BaseSettings):
     BaseSettings used to hold available models and datasets for training and prediction.
     """
 
-    available_models = set()
+    available_models = {x:set() for x in available_types}
     available_datasets = {}
 
 
@@ -65,7 +64,7 @@ class UniversalMLPredictionObject(BaseModel):
 
     file_names: List[str] = []  # List of all file names that this is uploaded as
     hash_md5: str  # Video md5 hash
-    type: str # aligns to collections in database object. e.g. "video", "image", etc.
+    type: constr(regex=regex_available_types)
     # hash_sha1: str  # Video sha1 hash
     # hash_perceptual: str  # Video perceptual hash
     users: list = []  # All users who have uploaded the video
@@ -82,6 +81,7 @@ class MicroserviceConnection(BaseModel):
 
     name: str = Field(alias="modelName")
     socket: Optional[str] = Field(alias="modelSocket")
+    type: constr(regex=regex_available_types)
 
     class Config:
         allow_population_by_field_name = True
@@ -91,7 +91,7 @@ class ModelPredictionResult(BaseModel):
     model_name: str
     hash: str
     results: dict
-    type: str
+    file_type: constr(regex=regex_available_types)
 
 
 class SearchFilter(BaseModel):
@@ -135,7 +135,7 @@ class APIKeyData(BaseModel):
     """
 
     key: str
-    type: str
+    type: str # prediction or training
     user: str  # Username of user associated with key
     detail: Optional[str] = ""
     enabled: bool

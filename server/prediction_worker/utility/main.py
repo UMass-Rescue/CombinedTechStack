@@ -1,7 +1,7 @@
 import os
 import requests
 from model.model import predict, init
-from model.config import model_name, model_tags
+from model.config import model_name, model_tags, model_type
 from worker import shutdown
 import time
 
@@ -14,13 +14,15 @@ def register_to_server():
     Registers a prediction model to the server. This will automatically register the correct name
     for the model.
     """
+
     while not shutdown:
         try:  # Register to server
             headers = {'api_key': API_KEY}
             r = requests.post(
                 SERVER_SOCKET + '/model/register',
                 headers=headers,
-                json={'name': model_name}
+                json={'name': model_name,
+                      'type': model_type}
             )
             r.raise_for_status()
             if r.status_code != 200:
@@ -40,7 +42,9 @@ def register_to_server():
 
 def send_prediction(hash, file_name, type):
     # try:
+
     result = predict(file_name)  # Create prediction on model
+    
     # except:
     #     # Do not send prediction results to server on crash. 
     #     print('[Error] Model Prediction Crash. Model: [' + model_name + '] Hash:[' + image_hash + ']')
@@ -51,16 +55,15 @@ def send_prediction(hash, file_name, type):
             'api_key': API_KEY
         }
         r = requests.post(
-            SERVER_SOCKET + '/model/predict_result',
+            SERVER_SOCKET + '/model/store_prediction',
             headers=headers,
             json={
                 'model_name': model_name,
                 'hash': hash,
                 'results': result,
-                'type': type
+                'file_type': type
             }
         )
         r.raise_for_status()
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError) as E:
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
         print('[Error] Model Result Sending Failure. Model: [' + model_name +'] Hash:[' + hash + ']')
-        print(E)

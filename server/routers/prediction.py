@@ -1,19 +1,16 @@
 import hashlib
 import os
 import shutil
-import time
+from itertools import chain
 
 from rq.registry import StartedJobRegistry
-from starlette import status
-from starlette.responses import JSONResponse
 
 import dependency
-import requests
 from fastapi import File, UploadFile, HTTPException, Depends, APIRouter
 from rq.job import Job
 
 from routers.auth import current_user_investigator
-from dependency import logger, MicroserviceConnection, settings, redis, User, pool, UniversalMLPredictionObject, object_collections
+from dependency import logger, MicroserviceConnection, settings, redis, User, pool, UniversalMLPredictionObject, object_collection
 from db_connection import add_object_db, add_user_to_object, get_objects_from_user_db, get_object_by_md5_hash_db, \
     get_api_key_by_key_db, add_filename_to_object, add_model_to_object_db, get_models_db, add_model_db, \
     update_tags_to_object, update_role_to_tag_object
@@ -31,7 +28,7 @@ async def get_available_prediction_models():
     Returns list of available models to the client. This list can be used when calling get_prediction,
     with the request
     """
-    return {"models": [*settings.available_models]}
+    return {"models": [*set(chain.from_iterable(settings.available_models.values()))]} 
 
 
 @model_router.get("/all", dependencies=[Depends(current_user_investigator)])
@@ -42,11 +39,10 @@ async def get_all_prediction_models():
     all_models = get_models_db()
     return {'models': all_models}
 
-
 @model_router.post("/predict")
 def create_new_prediction(objects: List[UploadFile] = File(...),
-                                   models: List[str] = (),
-                                   current_user: User = Depends(current_user_investigator)):
+                          models: List[str] = (),
+                          current_user: User = Depends(current_user_investigator)):
     """
     Create a new prediction request for any number of objects on any number of models. This will enqueue the jobs
     and a worker will process them and get the results. Once this is complete, a user may later query the job
@@ -58,6 +54,8 @@ def create_new_prediction(objects: List[UploadFile] = File(...),
     :return: Unique keys for each object uploaded in objects.
     """
 
+    #TODO: check file type and make sure it aligns with model type
+
     # Start with error checking on the models list.
     # Ensure that all desired models are valid.
     if not models:
@@ -65,7 +63,9 @@ def create_new_prediction(objects: List[UploadFile] = File(...),
 
     invalid_models = []
     for model in models:
-        if model not in settings.available_models:
+        print(settings.available_models)
+        print(settings.available_models[file_type])
+        if model not in settings.available_models[file_type]: 
             invalid_models.append(model)
 
     if invalid_models:
@@ -81,8 +81,7 @@ def create_new_prediction(objects: List[UploadFile] = File(...),
     # Process uploaded objects
     for upload_file in objects:
         file = upload_file.file
-        type = "video" #TODO: FIND THIS FIELD FROM UPLOAD FILE
-        print(type)
+        file_type = file_type
         md5 = hashlib.md5()
         while True:
             data = file.read(buffer_size)
@@ -96,15 +95,15 @@ def create_new_prediction(objects: List[UploadFile] = File(...),
 
         file.seek(0)
 
-        if get_object_by_md5_hash_db(hash_md5, type):
-            object = get_object_by_md5_hash_db(hash_md5, type)
+        if get_object_by_md5_hash_db(hash_md5):
+            object = get_object_by_md5_hash_db(hash_md5)
         else:  # If object does not already exist in db
 
             # Create a UniversalMLPredictionObject object to store data
             object = UniversalMLPredictionObject(**{
                 'file_names': [upload_file.filename],
                 'hash_md5': hash_md5,
-                'type': type, 
+                'type': file_type, 
                 'hash_sha1': 'TODO: Remove This Field',
                 'hash_perceptual': 'TODO: Remove This Field',
                 'users': [current_user.username],
@@ -128,8 +127,9 @@ def create_new_prediction(objects: List[UploadFile] = File(...),
         shutil.copyfileobj(file, stored_object)
 
         for model in models:
+            print("Enqueueing")
             dependency.prediction_queues[model].enqueue(
-                'utility.main.send_prediction', hash_md5, new_filename, type, job_id=hash_md5+model+str(uuid.uuid4())
+                'utility.main.send_prediction', hash_md5, new_filename, file_type, job_id=hash_md5+model+str(uuid.uuid4())
             )
 
 
@@ -152,13 +152,13 @@ async def get_jobs(md5_hashes: List[str]):
     # Since job_id is a composite hash+model, we must loop and find all jobs that have the
     # hash we want to find. We must get all running and pending jobs to return the correct value
     all_jobs = set()
-    for model in settings.available_models:
+    for model in set(chain.from_iterable(settings.available_models.values())):
         all_jobs.update(StartedJobRegistry(model, connection=redis).get_job_ids() + dependency.prediction_queues[model].job_ids)
 
     for md5_hash in md5_hashes:
 
         #TO DO: change this function to not take type
-        object = get_object_by_md5_hash_db(md5_hash, "video")  # Get object
+        object = get_object_by_md5_hash_db(md5_hash)  # Get object
         found_pending_job = False
         for job_id in all_jobs:
             if md5_hash in job_id and Job.fetch(job_id, connection=redis).get_status() != 'finished':
@@ -220,7 +220,7 @@ def search_objects(
     db_result = get_objects_from_user_db(current_user.username, page_id, search_filter, search_string)
     num_pages = db_result['num_pages']
     hashes = db_result['hashes'] if 'hashes' in db_result else []
-    num_objects = db_result['objects']
+    num_objects = db_result['num_objects']
     page_size = dependency.PAGINATION_PAGE_SIZE
 
     if page_id <= 0:
@@ -315,9 +315,8 @@ def register_model(model: MicroserviceConnection):
     :return: {'status': 'success'} if registration successful else {'status': 'failure'}
     """
 
-
     # Do not add duplicates of running models to server
-    if model.name in settings.available_models:
+    if model.name in settings.available_models[model.type]:
         return {
             "status": "success",
             'model': model.name,
@@ -326,7 +325,7 @@ def register_model(model: MicroserviceConnection):
 
 
     # Register model as available and add its queue
-    settings.available_models.add(model.name)
+    settings.available_models[model.type].add(model.name)
     dependency.prediction_queues[model.name] = Queue(model.name, connection=redis)
 
     logger.debug("Model " + model.name + " successfully registered to server.")
@@ -337,7 +336,7 @@ def register_model(model: MicroserviceConnection):
         'detail': 'Model has been successfully registered to server.'
     }
 
-@model_router.post('/predict_result', dependencies=[Depends(get_api_key)])
+@model_router.post('/store_prediction', dependencies=[Depends(get_api_key)])
 def receive_prediction_results(model_prediction_result: dependency.ModelPredictionResult):
     """
     Helper method that a worker will use to generate a prediction for a given model. This will be run in a task
@@ -350,10 +349,10 @@ def receive_prediction_results(model_prediction_result: dependency.ModelPredicti
     model_result = model_prediction_result.results['result']
     model_classes = model_prediction_result.results['classes']
 
-    if object_collections[model_prediction_result.type].find_one({"hash_md5": model_prediction_result.hash}):
-        object = get_object_by_md5_hash_db(model_prediction_result.hash, model_prediction_result.type)
+    if object_collection.find_one({"hash_md5": model_prediction_result.hash}):
+        object = get_object_by_md5_hash_db(model_prediction_result.hash)
     add_model_to_object_db(object, model_prediction_result.model_name, model_result)
-    add_model_db(model_prediction_result.model_name, model_classes, model_prediction_result.type)
+    add_model_db(model_prediction_result.model_name, model_classes, model_prediction_result.file_type)
 
 
 @model_router.post("/tag/update")

@@ -54,6 +54,25 @@ services:
       - redis
       - server
 
+  worker_speech_rec:
+    container_name: ${PREDICTION_SPEECH_REC}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: prediction/models/${PREDICTION_SPEECH_REC}/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_SPEECH_REC}
+    volumes:
+      - ./prediction/models/${PREDICTION_SPEECH_REC}:/app/model
+      - prediction:/app/videos
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
+
   worker_example_model:
     container_name: ${PREDICTION_TEMPLATE}_worker
     command: python3 worker.py
