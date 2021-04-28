@@ -11,7 +11,7 @@ import {
     Box,
     Chip
 } from '@material-ui/core';
-import ImageDropzone from "../../components/ImageDropzone/ImageDropzone";
+import VideoDropzone from "../../components/VideoDropzone/VideoDropzone";
 import Card from "@material-ui/core/Card";
 import Table from "@material-ui/core/Table";
 import TableRow from "@material-ui/core/TableRow";
@@ -190,7 +190,7 @@ const Import = () => {
     return (
         <div className={classes.root}>
 
-            <ImageDropzone filelistfunction={addFilesToUpload} />
+            <VideoDropzone filelistfunction={addFilesToUpload} />
 
             <div style={{ marginTop: '1em' }}>
                 <Box display={{xs: 'none', md: 'block'}}>
