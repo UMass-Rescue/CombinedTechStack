@@ -43,10 +43,12 @@ def predict(prediction_object_path):
 
     Note: All objects are stored in the directory '/app/objects/' in the Docker container. You may assume that the file
     path that is passed to this method is valid and that the image file exists.
+
+    prediction_object_path will be in the form: "app/objects/file_name", where file_name is the video, image, etc. file.
     """
 
-    print("Starting prediction")
-    video = mp.VideoFileClip(prediction_object)
+    print("Starting prediction on:" + prediction_object_path)
+    video = mp.VideoFileClip(prediction_object_path)
     print("VIDEO:", video, flush=True)
 
 
