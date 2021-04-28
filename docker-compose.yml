@@ -56,15 +56,15 @@ services:
 
   # TODO not working right now
   worker_sentiment:
-    container_name: ${PREDICT_SENTIMENT}_worker
+    container_name: ${PREDICTION_SENTIMENT_TEXT}_worker
     command: python3 worker.py
     build:
       context: .
       dockerfile: server/prediction_worker/Dockerfile
       args:
-        - MODEL_NAME=${PREDICT_SENTIMENT}
+        - MODEL_NAME=${PREDICTION_SENTIMENT_TEXT}
     volumes:
-      - ./prediction/models/${PREDICT_SENTIMENT}:/app/model
+      - ./prediction/models/${PREDICTION_SENTIMENT_TEXT}:/app/model
       - prediction_images:/app/images
     environment:
       - GUNICORN_CMD_ARGS=--reload
@@ -85,6 +85,25 @@ services:
         - MODEL_NAME=${PREDICTION_SIMPLE_TEXT}
     volumes:
       - ./prediction/models/${PREDICTION_SIMPLE_TEXT}:/app/model
+      - prediction_images:/app/images
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
+    
+  worker_exampletext:
+    container_name: ${PREDICTION_EXAMPLE_TEXT}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction_worker/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_EXAMPLE_TEXT}
+    volumes:
+      - ./prediction/models/${PREDICTION_EXAMPLE_TEXT}:/app/model
       - prediction_images:/app/images
     environment:
       - GUNICORN_CMD_ARGS=--reload

@@ -408,7 +408,7 @@ def register_model(model: MicroserviceConnection):
     :param model: MicroserviceConnection object with the model name and model socket.
     :return: {'status': 'success'} if registration successful else {'status': 'failure'}
     """
-
+ 
 
     # Do not add duplicates of running models to server
     if model.name in settings.available_models:
