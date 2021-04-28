@@ -14,7 +14,6 @@ def register_to_server():
     Registers a prediction model to the server. This will automatically register the correct name
     for the model.
     """
-    # raise Exception(model_tags)
     while not shutdown:
         try:  # Register to server
             headers = {'api_key': API_KEY}
@@ -22,7 +21,7 @@ def register_to_server():
                 SERVER_SOCKET + '/model/register',
                 headers=headers,
                 json={'name': model_name, "modelTags": model_tags, "modelTypes": model_type}
-            )
+
             r.raise_for_status()
             if r.status_code != 200:
                 print('[Error] Model Registration Unable to Authenticate to Server. Model: [' + model_name +']')
@@ -39,9 +38,11 @@ def register_to_server():
     print('[Worker] Registration Thread Shutting down.')
 
 
-def predict_image(image_hash, image_file_name):
+def send_prediction(hash, file_name, type):
     # try:
-    result = predict(image_file_name)  # Create prediction on model
+
+    result = predict(file_name)  # Create prediction on model
+    
     # except:
     #     # Do not send prediction results to server on crash. 
     #     print('[Error] Model Prediction Crash. Model: [' + model_name + '] Hash:[' + image_hash + ']')
@@ -52,14 +53,15 @@ def predict_image(image_hash, image_file_name):
             'api_key': API_KEY
         }
         r = requests.post(
-            SERVER_SOCKET + '/model/predict_result',
+            SERVER_SOCKET + '/model/store_prediction',
             headers=headers,
             json={
                 'model_name': model_name,
-                'image_hash': image_hash,
-                'results': result
+                'hash': hash,
+                'results': result,
+                'file_type': type
             }
         )
         r.raise_for_status()
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-        print('[Error] Model Result Sending Failure. Model: [' + model_name +'] Hash:[' + image_hash + ']')
+        print('[Error] Model Result Sending Failure. Model: [' + model_name +'] Hash:[' + hash + ']')

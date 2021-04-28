@@ -6,7 +6,7 @@ from typing import Optional, List, Dict
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.security import APIKeyHeader
 from passlib.context import CryptContext
-from pydantic import BaseModel, BaseSettings, typing, Field
+from pydantic import BaseModel, BaseSettings, typing, Field, constr
 from pymongo import MongoClient
 import os
 
@@ -14,6 +14,8 @@ from rq import Queue
 import redis as rd
 
 logger = logging.getLogger("api")
+available_types = ['video','audio','text','image'] #TODO: convert to enum e.g. userType
+regex_available_types = r'^\b'+ r'\b|^\b'.join(available_types) +r'\b'
 
 # --------------------------------------------------------------------------------
 #                                  Database Objects
@@ -22,15 +24,11 @@ logger = logging.getLogger("api")
 
 client = MongoClient(os.getenv("DB_HOST", default="database"), 27017)
 database = client["server_database"]
-image_collection = database["images"]  # Create collection for images in database
 user_collection = database["users"]  # Create collection for users in database
 api_key_collection = database["api_key"]  # Create collection for API keys in database
-model_collection = database[
-    "models"
-]  # Create collection for models and their structures in database
-training_collection = database[
-    "training"
-]  # Create collection for training status and results
+model_collection = database[ "models"]  # Create collection for models and their structures in database
+training_collection = database[ "training"]  # Create collection for training status and results
+object_collection = database["collections"]  # Create collection for objects in database
 
 PAGINATION_PAGE_SIZE = 15
 
@@ -61,19 +59,20 @@ shutdown = False
 redis = rd.Redis(host="redis", port=6379)
 prediction_queues = {}
 
-class UniversalMLImage(BaseModel):
+class UniversalMLPredictionObject(BaseModel):
     """
-    Object that is used to store all data associated with a model prediction request.
+    Object that is used to store all data associated with a video model prediction request.
     """
 
     file_names: List[str] = []  # List of all file names that this is uploaded as
-    hash_md5: str  # Image md5 hash
-    hash_sha1: str  # Image sha1 hash
-    hash_perceptual: str  # Image perceptual hash
-    users: list = []  # All users who have uploaded the image
-    metadata: str = ""  # All image information stored as a string
+    hash_md5: str  # Video md5 hash
+    type: constr(regex=regex_available_types)
+    # hash_sha1: str  # Video sha1 hash
+    # hash_perceptual: str  # Video perceptual hash
+    users: list = []  # All users who have uploaded the video
+    metadata: str = ""  # All video information stored as a string
     models: dict = {}  # ML Model results
-    tags: list = [] # Allow certified user to add tags when image is being uploaded 
+    tags: list = [] # Allow certified user to add tags when video is being uploaded 
     user_role_able_to_tag: list = [] #list of users allowed to add and remove tags
 
 
@@ -85,7 +84,8 @@ class MicroserviceConnection(BaseModel):
     name: str = Field(alias="modelName")
     socket: Optional[str] = Field(alias="modelSocket")
     modelTags: Optional[str]= ''
-    modelTypes: Optional[str]= ''
+    modelTypes: constr(regex=regex_available_types)
+
 
     class Config:
         allow_population_by_field_name = True
@@ -93,8 +93,9 @@ class MicroserviceConnection(BaseModel):
 
 class ModelPredictionResult(BaseModel):
     model_name: str
-    image_hash: str
+    hash: str
     results: dict
+    file_type: constr(regex=regex_available_types)
 
 
 class SearchFilter(BaseModel):
@@ -138,7 +139,7 @@ class APIKeyData(BaseModel):
     """
 
     key: str
-    type: str
+    type: str # prediction or training
     user: str  # Username of user associated with key
     detail: Optional[str] = ""
     enabled: bool

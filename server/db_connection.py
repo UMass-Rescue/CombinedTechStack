@@ -1,7 +1,7 @@
 from typing import Union, List
 
-from dependency import User, user_collection, image_collection, PAGINATION_PAGE_SIZE, UniversalMLImage, Roles, \
-    APIKeyData, \
+from dependency import User, user_collection, PAGINATION_PAGE_SIZE, UniversalMLPredictionObject, Roles, \
+    APIKeyData, object_collection,\
     api_key_collection, model_collection, TrainingResult, training_collection, logger
 import math
 import json
@@ -126,79 +126,78 @@ def set_api_key_enabled_db(key: APIKeyData, enabled: bool) -> bool:
 
 
 # ---------------------------
-# Image Database Interactions
+# Prediction Object Database Interactions
 # ---------------------------
 
-
-def add_image_db(image: UniversalMLImage):
+def add_object_db(object: UniversalMLPredictionObject):
     """
-    Adds a new image to the database based on the UniversalMLImage model.
+    Adds a new object to the database based on the UniversalMLPredictionObject model.
 
-    :param image: UniversalMLImage to add to database.
+    :param object: UniversalMLPredictionObject to add to database.
     """
 
-    if not image_collection.find_one({"hash_md5": image.hash_md5}):
-        image_collection.insert_one(image.dict())
+    if not object_collection.find_one({"hash_md5": object.hash_md5}):
+        object_collection.insert_one(object.dict())
 
 
-def add_user_to_image(image: UniversalMLImage, username: str):
+def add_user_to_object(object: UniversalMLPredictionObject, username: str):
     """
-    Adds a user account to a UniversalMLImage record. This is used to track which users upload images.
+    Adds a user account to a UniversalMLPredictionObject record. This is used to track which users upload objects.
 
-    :param image: UniversalMLImage to update
-    :param username: Username of user who is accessing image
+    :param v: UniversalMLPredictionObject to update
+    :param username: Username of user who is accessing object
     """
-    if image_collection.find_one({"hash_md5": image.hash_md5}):
-        existing_users = list(image_collection.find_one({"hash_md5": image.hash_md5})['users'])
+    if object_collection.find_one({"hash_md5": object.hash_md5}):
+        existing_users = list(object_collection.find_one({"hash_md5": object.hash_md5})['users'])
         if username not in existing_users:  # Only update if not in list already
             existing_users.append(username)
-            image_collection.update_one(
-                {"hash_md5": image.hash_md5},
+            object_collection.update_one(
+                {"hash_md5": object.hash_md5},
                 {'$set': {'users': existing_users}}
             )
 
 
-def add_filename_to_image(image: UniversalMLImage, filename: str):
+def add_filename_to_object(object: UniversalMLPredictionObject, filename: str):
     """
-    Adds a filename to a UniversalMLImage record. This is used to track all file names that an image is uploaded to
-    the server under. An image file is considered "the same" if their md5 hashes are identical.
+    Adds a filename to a UniversalMLPredictionObject record. This is used to track all file names that an object is uploaded to
+    the server under. An object file is considered "the same" if their md5 hashes are identical.
 
-    :param image: UniversalMLImage to update
+    :param object: UniversalMLPredictionObject to update
     :param filename: file name with extension
     """
-    if image_collection.find_one({"hash_md5": image.hash_md5}):
-        current_names = list(image_collection.find_one({"hash_md5": image.hash_md5})['file_names'])
+    if object_collection.find_one({"hash_md5": object.hash_md5}):
+        current_names = list(object_collection.find_one({"hash_md5": object.hash_md5})['file_names'])
         if filename not in current_names:  # Only update if not in list already
             current_names.append(filename)
-            image_collection.update_one(
-                {"hash_md5": image.hash_md5},
+            object_collection.update_one(
+                {"hash_md5": object.hash_md5},
                 {'$set': {'file_names': current_names}}
             )
 
 
-def add_model_to_image_db(image: UniversalMLImage, model_name, result):
+def add_model_to_object_db(object: UniversalMLPredictionObject, model_name, result):
     """
-    Adds prediction data to a UniversalMLImage object. This is normally called when a prediction microservice
+    Adds prediction data to a UniversalMLPredictionObject object. This is normally called when a prediction microservice
     returns data to the server with the results of a prediction request. The 'metadata' field is always updated.
     in this method as a string to enable easy querying of nested model results.
 
-    :param image: UniversalMLImage to add prediction data to
-    :param model_name: Name of model that was run on the image.
+    :param object: UniversalMLPredictionObject to add prediction data to
+    :param model_name: Name of model that was run on the object.
     :param result: JSON results of the training
     """
 
-    new_metadata = [list(image.dict()['models'].values()), model_name, result] + image.file_names
+    new_metadata = [list(object.dict()['models'].values()), model_name, result] + object.file_names
     metadata_str = json.dumps(new_metadata)
     for char_to_replace in ['"', "'", "\\", '[', ']', '{', '}']:
         metadata_str = metadata_str.replace(char_to_replace, '')
 
-    image_collection.update_one({'hash_md5': image.hash_md5}, {'$set': {
+    object_collection.update_one({'hash_md5': object.hash_md5}, {'$set': {
         'models.' + model_name: result,
         'metadata': metadata_str
     }})
 
 
-def get_images_from_user_db(
+def get_objects_from_user_db(
         username: str,
         page: int = -1,
         search_filter: dict = None,
@@ -206,21 +205,23 @@ def get_images_from_user_db(
         paginate: bool = True
 ):
     """
-    Returns a list of image hashes associated with a username. This method also has pagination support and if a page
-    number is provided, then it will return dependency.PAGINATION_PAGE_SIZE image hashes. If the username of the user
-    in this request is an administrator, then all images in the server will be queried. Otherwise, only UniversalMLImage
+    Returns a list of object hashes associated with a username. This method also has pagination support and if a page
+    number is provided, then it will return dependency.PAGINATION_PAGE_SIZE object hashes. If the username of the user
+    in this request is an administrator, then all object in the server will be queried. Otherwise, only UniversalMLPredictionObject
     objects that contain the username will be included in the results.
 
-    This method also has unique functionality to allow for filtering of image results. If these values are provided,
+    This method also has unique functionality to allow for filtering of object results. If these values are provided,
     the mongo query will be filtered based on the fields available in search_filter and search_string.
 
-    :param username: Username of user to get images for
-    :param page: Page to return of results. Will return all images if page is -1
+    :param username: Username of user to get objects for
+    :param page: Page to return of results. Will return all objects if page is -1
     :param search_filter Optional filter to narrow down query
-    :param search_string String that will be matched against image metadata
+    :param search_string String that will be matched against object metadata
     :param paginate Return all results or only page
-    :return: Array of image hashes, total pages
+    :return: Dictionary of object hashes, total pages
     """
+
+    #TODO: Add functionality to search by object type
 
     user = get_user_by_name_db(username)
     if not user:  # If user does not exist, return empty
@@ -234,21 +235,21 @@ def get_images_from_user_db(
         if search_filter:  # Append search filter
             flat_model_filter = (
                 [{'models.' + model + '.' + str(model_class): {'$gt': 0}} for model in search_filter for model_class in
-                 search_filter[model]])
+                    search_filter[model]])
             search_params.append({'$or': flat_model_filter})
         if search_string:  # Append search string
             search_params.append({"metadata": {'$regex': search_string, '$options': 'i'}})
         if Roles.admin.name not in user.roles:  # Add username to limit results if not admin
             search_params.append({'users': username})
 
-        result = image_collection.find({'$and': search_params}, {"hash_md5"})
+        result = object_collection.find({'$and': search_params}, {"hash_md5"})
     else:
         if Roles.admin.name in user.roles:
-            result = image_collection.find({}, {"hash_md5"})
+            result = object_collection.find({}, {"hash_md5"})
         else:
-            result = image_collection.find({'users': username}, {"hash_md5"})
+            result = object_collection.find({'users': username}, {"hash_md5"})
 
-    # If we are getting a specific page of images, then generate the list of hashes
+    # If we are getting a specific page of objects, then generate the list of hashes
     final_hash_list = []
     if page > 0 and paginate:
         # We use this for actual db queries. Page 1 = index 0
@@ -256,27 +257,28 @@ def get_images_from_user_db(
         final_hash_list = result.skip(PAGINATION_PAGE_SIZE * page_index).limit(PAGINATION_PAGE_SIZE)
 
         # After query, convert the result to a list
-        final_hash_list = [image_map['hash_md5'] for image_map in list(final_hash_list)]
+        final_hash_list = [object_map['hash_md5'] for object_map in list(final_hash_list)]
     elif not paginate:  # Return all results
-        final_hash_list = [image_map['hash_md5'] for image_map in list(result)]
+        final_hash_list = [object_map['hash_md5'] for object_map in list(result)]
 
-    num_images = result.count()
+    num_objects = result.count()
     return_value = {
         "hashes": final_hash_list,
-        "num_images": num_images
+        "num_objects": num_objects
     }
     if paginate:
-        return_value["num_pages"] = math.ceil(num_images / PAGINATION_PAGE_SIZE)
+        return_value["num_pages"] = math.ceil(num_objects / PAGINATION_PAGE_SIZE)
 
     return return_value
 
 
-def get_models_from_image_db(image: UniversalMLImage, model_name: str = ""):
+
+def get_models_from_object_db(object: UniversalMLPredictionObject, model_name: str = ""):
     """
-    Creates a dictionary of all models with prediction results for a given image. This is returned
+    Creates a dictionary of all models with prediction results for a given object. This is returned
     in the format of {modelName: result1, ...}.
 
-    :param image: UniversalMLImage to obtain model results from
+    :param object: UniversalMLPredictionObject to obtain model results from
     :param model_name: Optional filter to return specific model name
     :return: Dictionary of model results
     """
@@ -286,32 +288,34 @@ def get_models_from_image_db(image: UniversalMLImage, model_name: str = ""):
         "models": 1
     }
 
-    if not image_collection.find_one({"hash_md5": image.hash_md5}):
+    if not object_collection.find_one({"hash_md5": object.hash_md5}):
         return {}
 
     if model_name != "":
-        results = image_collection.find_one({"hash_md5": image.hash_md5}, projection)
+        results = object_collection.find_one({"hash_md5": object.hash_md5}, projection)
         return {model_name: results['models'][model_name]}
     else:
-        return image_collection.find_one({"hash_md5": image.hash_md5}, projection)['models']
+        return object_collection.find_one({"hash_md5": object.hash_md5}, projection)['models']
 
 
-def get_image_by_md5_hash_db(image_hash) -> Union[UniversalMLImage, None]:
+def get_object_by_md5_hash_db(object_hash) -> Union[UniversalMLPredictionObject, None]:
     """
-    Locates an image data by its md5 hash, and then creates a UniversalMLImage object with that data.
+    Locates an object data by its md5 hash, and then creates a UniversalMLPredictionObject object with that data.
 
-    :param image_hash: md5 hash of image to search for
-    :return: UniversalMLImage object of image with a md5 hash, or None if not found
+    :param object_hash: md5 hash of object to search for
+    :return: UniversalMLPredictionObject object of object with a md5 hash, or None if not found
     """
-    if not image_collection.find_one({"hash_md5": image_hash}):
+    if not object_collection.find_one({"hash_md5": object_hash}):
         return None
 
-    result = image_collection.find_one({"hash_md5": image_hash})
+    result = object_collection.find_one({"hash_md5": object_hash})
     result.pop('_id')
-    return UniversalMLImage(**result)
+        
+    return UniversalMLPredictionObject(**result)
 
 
-def update_tags_to_image(hashes_md5: [str], username: str, remove_tags: [str], new_tags: [str]):
+
+def update_tags_to_object(hashes_md5: [str], username: str, remove_tags: [str], new_tags: [str]):
     """
     This method recieves two tags, where user can choose an tag and update it into a new tag
 
@@ -319,8 +323,8 @@ def update_tags_to_image(hashes_md5: [str], username: str, remove_tags: [str], n
         username: user that is updating the tags
     request body:
         hashes_md5: list of md5 hashes
-        remove_tags: list of tags needs to be remove from images, default []
-        new_tags: list of tags needs to be added to images, default []
+        remove_tags: list of tags needs to be remove from objects, default []
+        new_tags: list of tags needs to be added to objects, default []
     return:
         always return a list with status message in it
     """
@@ -329,47 +333,49 @@ def update_tags_to_image(hashes_md5: [str], username: str, remove_tags: [str], n
     if user:
         roles = user.roles
         for hash_md5 in hashes_md5:
-            if image_collection.find_one({"hash_md5": hash_md5}):
-                authed_roles = image_collection.find_one({"hash_md5": hash_md5})['user_role_able_to_tag']
+            if get_object_by_md5_hash_db(hash_md5):
+                object = get_object_by_md5_hash_db(hash_md5)
+                authed_roles = object['user_role_able_to_tag']
                 if set(roles) & set(authed_roles): # update tags here
-                    existing_tags = image_collection.find_one({"hash_md5": hash_md5})['tags']
+                    existing_tags = object['tags']
                     existing_tags = list(set(existing_tags) - set(remove_tags) - set(new_tags))
                     existing_tags = existing_tags + new_tags
-                    image_collection.update_one(
+                    object.update_one(
                     {"hash_md5": hash_md5},
                     {'$set': {'tags': list(existing_tags)}}
                     )
                     result.append({'status': 'success', 'detail': hash_md5 + ' updated tags'})
                 else:
                     result.append({'status': 'failure', 'detail': hash_md5 + ' not authorized'})
-            else: # if image not found
+            else: # if object not found
                 result.append({'status': 'failure', 'detail': hash_md5 + ' not found'})
         return result
     return [{'status': 'failure', 'detail': 'User does not exist'}]
    
 
-# TODO: Current any roles can change the user_role_able_to_tag field under image object, change the following mark line to limit access
-def update_role_to_tag_image(hashes_md5: [str], username: str, remove_roles: [str], new_roles: [str]):
+# TODO: Current any roles can change the user_role_able_to_tag field under object object, change the following mark line to limit access
+def update_role_to_tag_object(hashes_md5: [str], username: str, remove_roles: [str], new_roles: [str]):
     """
-    Update new authorized tagging role to the UMI(image) object, so user with that role can
-    add or remove tag for that image
+    Update new authorized tagging role to the object, so user with that role can
+    add or remove tag for that object
 
     :param username: username of the current user
     :request body:
         hashes_md5: list of md5 hashes
-        remove_roles: list of roles needs to be remove from images, default []
-        new_roles: list of roles needs to be added to images, default []
+        remove_roles: list of roles needs to be remove from objects, default []
+        new_roles: list of roles needs to be added to objects, default []
     """
     result = []
     user = get_user_by_name_db(username)
     if user:
         if set(user.roles) & {"admin", "investigator", "researcher"}: # currently all roles can access this function
             for hash_md5 in hashes_md5:
-                if image_collection.find_one({"hash_md5": hash_md5}):
-                    current_authed_role = image_collection.find_one({"hash_md5": hash_md5})['user_role_able_to_tag']
+                if get_object_by_md5_hash_db(hash_md5):
+                    object = get_object_by_md5_hash_db(hash_md5)
+                    current_authed_role = object['user_role_able_to_tag']
                     current_authed_role = list(set(current_authed_role) - set(remove_roles) - set(new_roles))
                     current_authed_role = current_authed_role + new_roles
-                    image_collection.update_one(
+                    object.update_one(
                         {"hash_md5": hash_md5},
                         {'$set': {'user_role_able_to_tag': list(current_authed_role)}}
                     )
@@ -377,7 +383,7 @@ def update_role_to_tag_image(hashes_md5: [str], username: str, remove_roles: [st
                 else:
                     result.append({'status': 'failure', 'detail': hash_md5 + ' not found'})
             return result
-        return [{'status': 'failure', 'detail': hash_md5 + ' not authorized'}]
+        return [{'status': 'failure', 'detail': username + ' not authorized'}]
     return [{'status': 'failure', 'detail': 'User does not exist'}]
 
 
@@ -387,18 +393,20 @@ def update_role_to_tag_image(hashes_md5: [str], username: str, remove_roles: [st
 # ---------------------------
 
 
-def add_model_db(model_name: str, model_fields: List[str]):
+def add_model_db(model_name: str, model_fields: List[str], model_type: str):
     """
     Adds information on the name and fields of a model to the model collection of the database. This is used when
     models register themselves to the server so that prediction requests know what fields to expect in the results.
 
     :param model_name: Name of model
     :param model_fields: List of all possible classes model may return
+    :param model_type: Data type of model
     """
     if not model_collection.find_one({'model_name': model_name}):
         model_collection.insert_one({
             'model_name': model_name,
-            'model_fields': model_fields
+            'model_fields': model_fields,
+            "model_data_type": model_type
         })
 
 
@@ -412,6 +420,19 @@ def get_models_db():
     all_models = list(model_collection.find())
     model_list = {model['model_name']: model['model_fields'] for model in all_models}
     return model_list
+
+
+def get_models_db_by_type(data_type):
+    """
+    Creates a list of all registered models and their classes for a given data type. The return value is of the format
+    {modelName: [modelClass1, modelClass2, ...], ...}
+
+    :return: List of all models and their classes for that data type. [] if no models registered.
+    """
+    all_models = list(model_collection.find({"model_data_type":data_type}))
+    model_list = {model['model_name']: model['model_fields'] for model in all_models}
+    return model_list
+
 
 
 # ------------------------------

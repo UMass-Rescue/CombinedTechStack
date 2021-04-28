@@ -28,6 +28,7 @@ def init():
     __model = Wav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-base-960h")
 
 
+
 def predict(prediction_input):
     """
     Interface method between model and server. This signature must not be
@@ -50,8 +51,10 @@ def predict(prediction_input):
     # text_input = prediction_input  # If text model
     # image = Image.open('/app/images/' + prediction_input)  # If image model
 
+
     video = mp.VideoFileClip('/app/images/' + prediction_input)
     print(video, flush=True)
+
 
     # import os
     # print(os.getcwd())
@@ -69,6 +72,7 @@ def predict(prediction_input):
     def asr_transcript(tokenizer, model, input_file):
         if(not tokenizer):
             print("Not receving tokenizer", flush = True)
+
 
 
         transcript = ""
@@ -92,7 +96,9 @@ def predict(prediction_input):
         return transcript
 
 
+
     short1_trans = asr_transcript(__tokenizer, __model, "short1.wav")
+
 
     
     # file1 = open("speech.txt", "w")
@@ -107,6 +113,7 @@ def predict(prediction_input):
         else:
             # print(f"word: {entities.text}: TAG: {entities.label_}")
             NER_dict[entities.label_].append(entities.text)
+
 
     print(NER_dict, flush = True)
     return {
