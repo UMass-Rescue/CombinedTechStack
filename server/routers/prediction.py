@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from rq.job import Job
 
 from routers.auth import current_user_investigator
-from dependency import logger, MicroserviceConnection, settings, redis, User, pool, UniversalMLImage
+from dependency import logger, MicroserviceConnection, settings, redis, User, UniversalMLImage
 from db_connection import add_image_db, add_user_to_image, get_images_from_user_db, get_image_by_md5_hash_db, \
     get_api_key_by_key_db, add_filename_to_image, add_model_to_image_db, get_models_db, add_model_db, \
     update_tags_to_image, update_role_to_tag_image
@@ -115,8 +115,6 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
             image_object = UniversalMLImage(**{
                 'file_names': [upload_file.filename],
                 'hash_md5': hash_md5,
-                'hash_sha1': 'TODO: Remove This Field',
-                'hash_perceptual': 'TODO: Remove This Field',
                 'users': [current_user.username],
                 'models': {},
                 'user_role_able_to_tag': ['admin']

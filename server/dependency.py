@@ -10,7 +10,6 @@ from pydantic import BaseModel, BaseSettings, typing, Field
 from pymongo import MongoClient
 import os
 
-from rq import Queue
 import redis as rd
 
 logger = logging.getLogger("api")
@@ -60,6 +59,7 @@ shutdown = False
 redis = rd.Redis(host="redis", port=6379)
 prediction_queues = {}
 
+
 class UniversalMLImage(BaseModel):
     """
     Object that is used to store all data associated with a model prediction request.
@@ -67,13 +67,11 @@ class UniversalMLImage(BaseModel):
 
     file_names: List[str] = []  # List of all file names that this is uploaded as
     hash_md5: str  # Image md5 hash
-    hash_sha1: str  # Image sha1 hash
-    hash_perceptual: str  # Image perceptual hash
     users: list = []  # All users who have uploaded the image
     metadata: str = ""  # All image information stored as a string
     models: dict = {}  # ML Model results
-    tags: list = [] # Allow certified user to add tags when image is being uploaded 
-    user_role_able_to_tag: list = [] #list of users allowed to add and remove tags
+    tags: list = []  # Allow certified user to add tags when image is being uploaded
+    user_role_able_to_tag: list = []  # List of users allowed to add and remove tags
 
 
 class MicroserviceConnection(BaseModel):

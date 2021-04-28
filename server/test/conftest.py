@@ -29,8 +29,6 @@ def test_configuration():
     # image1 = UniversalMLImage(**{
     #             'file_names': ['test_image_file_1.png'],
     #             'hash_md5': 'image1hash',
-    #             'hash_sha1': 'image1hash',
-    #             'hash_perceptual': 'image1hash',
     #             'users': ['testing'],
     #             'models': {},
     #             'tags': [],
