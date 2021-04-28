@@ -381,7 +381,6 @@ def update_role_to_tag_image(hashes_md5: [str], username: str, remove_roles: [st
     return [{'status': 'failure', 'detail': 'User does not exist'}]
 
 
-
 # ---------------------------
 # Model Database Interactions
 # ---------------------------

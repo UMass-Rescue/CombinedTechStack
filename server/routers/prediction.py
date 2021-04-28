@@ -1,19 +1,16 @@
 import hashlib
 import os
 import shutil
-import time
 
 from rq.registry import StartedJobRegistry
-from starlette import status
-from starlette.responses import JSONResponse
 
 import dependency
-import requests
 from fastapi import File, UploadFile, HTTPException, Depends, APIRouter
 from rq.job import Job
+from rq import Worker
 
 from routers.auth import current_user_investigator
-from dependency import logger, MicroserviceConnection, settings, redis, User, pool, UniversalMLImage
+from dependency import User, UniversalMLImage, redis
 from db_connection import add_image_db, add_user_to_image, get_images_from_user_db, get_image_by_md5_hash_db, \
     get_api_key_by_key_db, add_filename_to_image, add_model_to_image_db, get_models_db, add_model_db, \
     update_tags_to_image, update_role_to_tag_image
@@ -26,12 +23,13 @@ model_router = APIRouter()
 
 
 @model_router.get("/list", dependencies=[Depends(current_user_investigator)])
-async def get_available_prediction_models():
+def get_model_names():
     """
     Returns list of available models to the client. This list can be used when calling get_prediction,
     with the request
     """
-    return {"models": [*settings.available_models]}
+
+    return {"models": get_available_prediction_models()}
 
 
 @model_router.get("/all", dependencies=[Depends(current_user_investigator)])
@@ -42,12 +40,17 @@ async def get_all_prediction_models():
     all_models = get_models_db()
     return {'models': all_models}
 
+
 @model_router.get("/tags", dependencies=[Depends(current_user_investigator)])
 async def get_available_prediction_models():
     """
     Returns list of tags for each available model
     """
-    return {"tags": settings.models_tags}
+
+    worker_data = [w.name.split(';') for w in Worker.all(redis)]
+    valid_workers = {w[2]: w[3] for w in worker_data if w[0] == 'prediction'}
+
+    return {"tags": valid_workers}
 
 
 @model_router.post("/predict")
@@ -72,7 +75,7 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
 
     invalid_models = []
     for model in models:
-        if model not in settings.available_models:
+        if model not in get_available_prediction_models():
             invalid_models.append(model)
 
     if invalid_models:
@@ -132,7 +135,7 @@ def create_new_prediction_on_image(images: List[UploadFile] = File(...),
         shutil.copyfileobj(file, stored_image)
 
         for model in models:
-            dependency.prediction_queues[model].enqueue(
+            Queue(name=model, connection=redis).enqueue(
                 'utility.main.predict_image', hash_md5, new_filename, job_id=hash_md5+model+str(uuid.uuid4())
             )
 
@@ -157,8 +160,8 @@ async def get_jobs(md5_hashes: List[str]):
     # Since job_id is a composite hash+model, we must loop and find all jobs that have the
     # hash we want to find. We must get all running and pending jobs to return the correct value
     all_jobs = set()
-    for model in settings.available_models:
-        all_jobs.update(StartedJobRegistry(model, connection=redis).get_job_ids() + dependency.prediction_queues[model].job_ids)
+    for model in get_available_prediction_models():
+        all_jobs.update(StartedJobRegistry(model, connection=redis).get_job_ids() + Queue(model, connection=redis).job_ids)
 
     for md5_hash in md5_hashes:
 
@@ -308,42 +311,6 @@ def get_api_key(api_key_header: str = Depends(dependency.api_key_header_auth)):
     return api_key_data
 
 
-@model_router.post("/register", dependencies=[Depends(get_api_key)])
-def register_model(model: MicroserviceConnection):
-    """
-    Register a single model to the server by adding the model's name and socket
-    to available model settings. Also kick start a separate thread to keep track
-    of the model service status. Models that are registered must use a valid API key.
-
-    :param model: MicroserviceConnection object with the model name and model socket.
-    :return: {'status': 'success'} if registration successful else {'status': 'failure'}
-    """
-
-
-    # Do not add duplicates of running models to server
-    if model.name in settings.available_models:
-        return {
-            "status": "success",
-            'model': model.name,
-            'detail': 'Model has already been registered.'
-        }
-
-    # Register model as available and add its queue
-    settings.available_models.add(model.name)
-    dependency.prediction_queues[model.name] = Queue(model.name, connection=redis)
-    logger.debug(model.modelTags)
-    settings.models_tags[model.name] = model.modelTags
-    
-
-    logger.debug("Model " + model.name + " successfully registered to server.")
-
-    return {
-        "status": "success",
-        'model': model.name,
-        'detail': 'Model has been successfully registered to server.'
-    }
-
-
 @model_router.post('/predict_result', dependencies=[Depends(get_api_key)])
 def receive_prediction_results(model_prediction_result: dependency.ModelPredictionResult):
     """
@@ -382,8 +349,8 @@ async def update_image_tags(md5_hashes: List[str], username: str, remove_tags: L
 @model_router.post("/tag/role/update")
 async def update_image_tag_roles(md5_hashes: List[str], username: str, remove_roles: List[str] = [], new_roles: List[str] = []):
     """
-    Find an image and add roles_able_to_tag into its universalMLimage object "user_role_able_to_tag" field, so that role can update 
-    that image's tags
+    Find an image and add roles_able_to_tag into its universalMLimage object "user_role_able_to_tag" field, so that
+    role can update that image's tags
 
     :param md5_hashes: List of hashes for universal ml image object
     :param username: username of the current user
@@ -394,3 +361,11 @@ async def update_image_tag_roles(md5_hashes: List[str], username: str, remove_ro
     result = update_role_to_tag_image(md5_hashes, username, remove_roles, new_roles)
     return result
 
+
+def get_available_prediction_models():
+    """
+    Generates a list of all models connected to the server.
+    """
+    worker_data = [w.name.split(';') for w in Worker.all(redis)]
+    valid_workers = set(w[2] for w in worker_data if w[0] == 'prediction')
+    return list(valid_workers)

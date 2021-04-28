@@ -54,6 +54,25 @@ services:
       - redis
       - server
 
+  worker_example_model2:
+    container_name: ${PREDICTION_TEMPLATE}_worker2
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction_worker/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_TEMPLATE}
+    volumes:
+      - ./prediction/models/${PREDICTION_TEMPLATE}:/app/model
+      - prediction_images:/app/images
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
+
   worker_average_pixel:
     container_name: ${PREDICTION_AVERAGE_PIXEL}_worker
     command: python3 worker.py

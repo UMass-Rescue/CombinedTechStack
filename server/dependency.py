@@ -45,9 +45,7 @@ class Settings(BaseSettings):
     BaseSettings used to hold available models and datasets for training and prediction.
     """
 
-    available_models = set()
     available_datasets = {}
-    models_tags = {}
 
 
 settings = Settings()
@@ -58,7 +56,7 @@ shutdown = False
 
 # Redis Queue for model-prediction jobs
 redis = rd.Redis(host="redis", port=6379)
-prediction_queues = {}
+
 
 class UniversalMLImage(BaseModel):
     """
