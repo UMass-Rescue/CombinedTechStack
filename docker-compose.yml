@@ -135,6 +135,23 @@ services:
       - GUNICORN_CMD_ARGS=--reload
     depends_on:
       - redis
+      - server   
+      
+  worker_object_detection:
+    container_name: ${PREDICTION_OBJECT_DETECTION}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction_worker/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_OBJECT_DETECTION}
+    volumes:
+      - ./prediction/models/${PREDICTION_OBJECT_DETECTION}:/app/model
+      - prediction_images:/app/images
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+    depends_on:
+      - redis
       - server
       
   worker_speech_rec:
