@@ -11,7 +11,7 @@ from fastapi import File, UploadFile, HTTPException, Depends, APIRouter
 from rq.job import Job
 
 from routers.auth import current_user_investigator
-from dependency import logger, MicroserviceConnection, settings, redis, User, pool, UniversalMLPredictionObject, object_collection
+from dependency import logger, MicroserviceConnection, settings, redis, User, pool, UniversalMLPredictionObject, object_collection, PredictionRequest
 from db_connection import add_object_db, add_user_to_object, get_objects_from_user_db, get_object_by_md5_hash_db, \
     get_api_key_by_key_db, add_filename_to_object, add_model_to_object_db, get_models_db, add_model_db, \
     update_tags_to_object, update_role_to_tag_object
@@ -84,9 +84,7 @@ async def get_prediction_model_types():
 
 
 @model_router.post("/predict")
-def create_new_prediction(model_type: str,
-                          objects: List[UploadFile] = File(...),
-                          models: List[str] = (),
+def create_new_prediction(p: PredictionRequest, 
                           current_user: User = Depends(current_user_investigator)):
     """
     Create a new prediction request for any number of objects on any number of models. This will enqueue the jobs
@@ -99,6 +97,9 @@ def create_new_prediction(model_type: str,
     :return: Unique keys for each object uploaded in objects.
     """
 
+    models = p.models
+    model_type = p.model_type
+    objects = p.objects
     
 
     # Start with error checking on the models list.

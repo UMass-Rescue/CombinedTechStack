@@ -5,6 +5,7 @@ from typing import Optional, List, Dict
 
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.security import APIKeyHeader
+from fastapi import File, UploadFile
 from passlib.context import CryptContext
 from pydantic import BaseModel, BaseSettings, typing, Field, constr
 from pymongo import MongoClient
@@ -14,7 +15,7 @@ from rq import Queue
 import redis as rd
 
 logger = logging.getLogger("api")
-available_types = ['video','audio','text','image'] #TODO: convert to enum e.g. userType
+available_types = ['video','audio','text','image'] #TODO: convert to enum. See userType for example.
 regex_available_types = r'^\b'+ r'\b|^\b'.join(available_types) +r'\b'
 
 # --------------------------------------------------------------------------------
@@ -100,6 +101,11 @@ class ModelPredictionResult(BaseModel):
 
 class SearchFilter(BaseModel):
     search_filter: dict
+
+class PredictionRequest(BaseModel):
+    objects: List[UploadFile] = File(...)
+    models: List[str] = ()
+    model_type: str = ''
 
 
 # --------------------------------------------------------------------------------

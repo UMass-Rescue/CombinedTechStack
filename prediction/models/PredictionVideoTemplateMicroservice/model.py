@@ -1,6 +1,4 @@
 import base64
-
-from PIL import Image
 import time
 import cv2
 
@@ -35,19 +33,7 @@ def predict(prediction_object_path):
     prediction_object_path will be in the form: "app/objects/file_name", where file_name is the video, image, etc. file.
     """
 
-    try:
-        # example of opening the file if the model works on images
-        image = Image.open(prediction_object_path)
-    except:
-        pass
-
-    try:
-    # example of opening the file if the model works on video
-        cap = cv2.VideoCapture(prediction_object_path)
-    except:
-        pass
-
-    
+    cap = cv2.VideoCapture(prediction_object_path)
     
     return {
         'classes': ['isGreen', 'isRed'],  # List every class in the classifier

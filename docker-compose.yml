@@ -35,16 +35,16 @@ services:
   #           Prediction Microservice Workers
   # ------------------------------------------------------------------------------
 
-  worker_example_model:
-    container_name: ${PREDICTION_TEMPLATE}_worker
+  worker_example_image_model:
+    container_name: ${PREDICTION_IMAGE_TEMPLATE}_worker
     command: python3 worker.py
     build:
       context: .
       dockerfile: server/prediction_worker/Dockerfile
       args:
-        - MODEL_NAME=${PREDICTION_TEMPLATE}
+        - MODEL_NAME=${PREDICTION_IMAGE_TEMPLATE}
     volumes:
-      - ./prediction/models/${PREDICTION_TEMPLATE}:/app/model
+      - ./prediction/models/${PREDICTION_IMAGE_TEMPLATE}:/app/model
       - prediction:/app/objects
     environment:
       - GUNICORN_CMD_ARGS=--reload
@@ -54,43 +54,62 @@ services:
       - redis
       - server
 
-  # worker_average_pixel:
-  #   container_name: ${PREDICTION_AVERAGE_PIXEL}_worker
-  #   command: python3 worker.py
-  #   build:
-  #     context: .
-  #     dockerfile: server/prediction_worker/Dockerfile
-  #     args:
-  #       - MODEL_NAME=${PREDICTION_AVERAGE_PIXEL}
-  #   volumes:
-  #     - ./prediction/models/${PREDICTION_AVERAGE_PIXEL}:/app/model
-  #     - prediction:/app/objects
-  #   environment:
-  #     - GUNICORN_CMD_ARGS=--reload
-  #     - API_KEY=${API_KEY_PREDICTION}
-  #     - SERVER_SOCKET=${SERVER_SOCKET}
-  #   depends_on:
-  #     - redis
-  #     - server
+  worker_example__video_model:
+    container_name: ${PREDICTION_VIDEO_TEMPLATE}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: prediction/models/${PREDICTION_VIDEO_TEMPLATE}/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_VIDEO_TEMPLATE}
+    volumes:
+      - ./prediction/models/${PREDICTION_VIDEO_TEMPLATE}:/app/model
+      - prediction:/app/objects
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
 
-  # worker_face_detect:
-  #   container_name: ${PREDICTION_FACE_DETECT}_worker
-  #   command: python3 worker.py
-  #   build:
-  #     context: .
-  #     dockerfile: server/prediction_worker/Dockerfile
-  #     args:
-  #       - MODEL_NAME=${PREDICTION_FACE_DETECT}
-  #   volumes:
-  #     - ./prediction/models/${PREDICTION_FACE_DETECT}:/app/model
-  #     - prediction:/app/objects
-  #   environment:
-  #     - GUNICORN_CMD_ARGS=--reload
-  #     - API_KEY=${API_KEY_PREDICTION}
-  #     - SERVER_SOCKET=${SERVER_SOCKET}
-  #   depends_on:
-  #     - redis
-  #     - server
+  worker_average_pixel:
+    container_name: ${PREDICTION_AVERAGE_PIXEL}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction_worker/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_AVERAGE_PIXEL}
+    volumes:
+      - ./prediction/models/${PREDICTION_AVERAGE_PIXEL}:/app/model
+      - prediction:/app/objects
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
+
+  worker_face_detect:
+    container_name: ${PREDICTION_FACE_DETECT}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction_worker/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_FACE_DETECT}
+    volumes:
+      - ./prediction/models/${PREDICTION_FACE_DETECT}:/app/model
+      - prediction:/app/objects
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
       
   worker_speech_rec:
     container_name: ${PREDICTION_SPEECH_REC}_worker
@@ -111,108 +130,108 @@ services:
       - redis
       - server
 
-  # worker_image_hash:
-  #   container_name: ${PREDICTION_IMAGE_HASH}_worker
-  #   command: python3 worker.py
-  #   build:
-  #     context: .
-  #     dockerfile: server/prediction_worker/Dockerfile
-  #     args:
-  #       - MODEL_NAME=${PREDICTION_IMAGE_HASH}
-  #   volumes:
-  #     - ./prediction/models/${PREDICTION_IMAGE_HASH}:/app/model
-  #     - prediction:/app/objects
-  #   environment:
-  #     - GUNICORN_CMD_ARGS=--reload
-  #     - API_KEY=${API_KEY_PREDICTION}
-  #     - SERVER_SOCKET=${SERVER_SOCKET}
-  #   depends_on:
-  #     - redis
-  #     - server
+  worker_image_hash:
+    container_name: ${PREDICTION_IMAGE_HASH}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction_worker/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_IMAGE_HASH}
+    volumes:
+      - ./prediction/models/${PREDICTION_IMAGE_HASH}:/app/model
+      - prediction:/app/objects
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
 
-  # worker_image_shape:
-  #   container_name: ${PREDICTION_IMAGE_SHAPE}_worker
-  #   command: python3 worker.py
-  #   build:
-  #     context: .
-  #     dockerfile: server/prediction_worker/Dockerfile
-  #     args:
-  #       - MODEL_NAME=${PREDICTION_IMAGE_SHAPE}
-  #   volumes:
-  #     - ./prediction/models/${PREDICTION_IMAGE_SHAPE}:/app/model
-  #     - prediction:/app/objects
-  #   environment:
-  #     - GUNICORN_CMD_ARGS=--reload
-  #     - API_KEY=${API_KEY_PREDICTION}
-  #     - SERVER_SOCKET=${SERVER_SOCKET}
-  #   depends_on:
-  #     - redis
-  #     - server
+  worker_image_shape:
+    container_name: ${PREDICTION_IMAGE_SHAPE}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction_worker/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_IMAGE_SHAPE}
+    volumes:
+      - ./prediction/models/${PREDICTION_IMAGE_SHAPE}:/app/model
+      - prediction:/app/objects
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
 
-  # worker_scene_detect:
-  #   container_name: ${PREDICTION_SCENE_DETECT}_worker
-  #   command: python3 worker.py
-  #   build:
-  #     context: .
-  #     dockerfile: server/prediction_worker/Dockerfile
-  #     args:
-  #       - MODEL_NAME=${PREDICTION_SCENE_DETECT}
-  #   volumes:
-  #     - ./prediction/models/${PREDICTION_SCENE_DETECT}:/app/model
-  #     - prediction:/app/objects
-  #   environment:
-  #     - GUNICORN_CMD_ARGS=--reload
-  #     - API_KEY=${API_KEY_PREDICTION}
-  #     - SERVER_SOCKET=${SERVER_SOCKET}
-  #   depends_on:
-  #     - redis
-  #     - server         
+  worker_scene_detect:
+    container_name: ${PREDICTION_SCENE_DETECT}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction_worker/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_SCENE_DETECT}
+    volumes:
+      - ./prediction/models/${PREDICTION_SCENE_DETECT}:/app/model
+      - prediction:/app/objects
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - API_KEY=${API_KEY_PREDICTION}
+      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server         
 
   # ------------------------------------------------------------------------------
   #           Training Microservices
   # ------------------------------------------------------------------------------
 
-  # mnist_fashion_dataset:
-  #   stdin_open: true
-  #   container_name: mnist_fashion_dataset
-  #   command: uvicorn src.server.main:app --host 0.0.0.0 --port 6006 --debug --reload-dir /app --log-level debug
-  #   build:
-  #     context: training/MNISTFashionMicroservice
-  #     dockerfile: Dockerfile
-  #   environment:
-  #     - GUNICORN_CMD_ARGS=--reload
-  #     - DATASET_LOCATION=${MNIST_FASHION_DATASET_LOCATION}
-  #     - SERVER_PORT=${SERVER_PORT}
-  #     - PORT=6006
-  #     - DATASET_NAME=mnist_fashion
-  #     - API_KEY=${API_KEY_TRAINING}
-  #   volumes:
-  #     - ./training/MNISTFashionMicroservice/:/app
-  #     - mnist_fashion_dataset_vol:/app/src/dataset
-  #     - mnist_fashion_public_dataset_vol:/app/src/public_dataset
-  #   ports:
-  #     - 6006:6006
+  mnist_fashion_dataset:
+    stdin_open: true
+    container_name: mnist_fashion_dataset
+    command: uvicorn src.server.main:app --host 0.0.0.0 --port 6006 --debug --reload-dir /app --log-level debug
+    build:
+      context: training/MNISTFashionMicroservice
+      dockerfile: Dockerfile
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - DATASET_LOCATION=${MNIST_FASHION_DATASET_LOCATION}
+      - SERVER_PORT=${SERVER_PORT}
+      - PORT=6006
+      - DATASET_NAME=mnist_fashion
+      - API_KEY=${API_KEY_TRAINING}
+    volumes:
+      - ./training/MNISTFashionMicroservice/:/app
+      - mnist_fashion_dataset_vol:/app/src/dataset
+      - mnist_fashion_public_dataset_vol:/app/src/public_dataset
+    ports:
+      - 6006:6006
 
   # ------------------------------------------------------------------------------
   #           Training Microservice Workers
   # ------------------------------------------------------------------------------
 
-  # mnist_fashion_dataset_worker:
-  #   container_name: mnist_fashion_dataset_worker
-  #   command: python3 src/server/worker.py
-  #   build:
-  #     context: training/MNISTFashionMicroservice
-  #     dockerfile: Dockerfile
-  #   volumes:
-  #     - ./training/MNISTFashionMicroservice/:/app
-  #     - mnist_fashion_dataset_vol:/app/src/dataset
-  #     - mnist_fashion_public_dataset_vol:/app/src/public_dataset
-  #   environment:
-  #     - GUNICORN_CMD_ARGS=--reload
-  #     - DATASET_NAME=mnist_fashion
-  #     - SERVER_PORT=${SERVER_PORT}
-  #     - API_KEY=${API_KEY_TRAINING}
-  #   depends_on:
+  mnist_fashion_dataset_worker:
+    container_name: mnist_fashion_dataset_worker
+    command: python3 src/server/worker.py
+    build:
+      context: training/MNISTFashionMicroservice
+      dockerfile: Dockerfile
+    volumes:
+      - ./training/MNISTFashionMicroservice/:/app
+      - mnist_fashion_dataset_vol:/app/src/dataset
+      - mnist_fashion_public_dataset_vol:/app/src/public_dataset
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+      - DATASET_NAME=mnist_fashion
+      - SERVER_PORT=${SERVER_PORT}
+      - API_KEY=${API_KEY_TRAINING}
+    depends_on:
   #     - redis
 
   # ------------------------------------------------------------------------------
