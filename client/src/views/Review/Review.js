@@ -282,7 +282,7 @@ const Review = () => {
             let response = await loadImageDataFromServer({}, '');
             setPagesTotal(response.data['num_pages']);
             setPageSize(response.data['page_size']);
-            setNumImagesTotal(response.data['num_images']);
+            setNumImagesTotal(response.data['num_objects']);
         }
         imageLoadHelper();
 
@@ -316,7 +316,7 @@ const Review = () => {
         setAdvancedSearchOpen(false);
         setPagesTotal(response.data['num_pages']);
         setPageSize(response.data['page_size']);
-        setNumImagesTotal(response.data['num_images']);
+        setNumImagesTotal(response.data['num_objects']);
     }
 
     async function clearSearch() {
@@ -324,7 +324,7 @@ const Review = () => {
 
         setPagesTotal(response.data['num_pages']);
         setPageSize(response.data['page_size']);
-        setNumImagesTotal(response.data['num_images']);
+        setNumImagesTotal(response.data['num_objects']);
         setUsingSearchFilter(false);
         setGeneralSearchQuery('');
         setAdvancedSearchFilter([]);
