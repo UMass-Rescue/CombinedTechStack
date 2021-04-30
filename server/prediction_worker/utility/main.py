@@ -12,10 +12,13 @@ database_model_collection = client['server_database']['models']
 def predict_object(object_hash, object_file_name):
     try:
         result = predict(object_file_name)  # Create prediction on model
-    except:
+    except Exception as e:
         # Do not send prediction results to server on crash.
+        print(e)
         print('[Error] Model Prediction Crash. Model: [' + model_name + '] Hash:[' + object_hash + ']', flush=True)
         return
+
+    print('Prediction Complete', result, flush=True)
 
     # Update model results in the database
     current_image_obj = database_object_collection.find_one({"hash_md5": object_hash})

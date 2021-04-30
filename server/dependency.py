@@ -15,8 +15,8 @@ from rq import Queue
 import redis as rd
 
 logger = logging.getLogger("api")
-available_types = ['video','audio','text','image'] #TODO: convert to enum. See userType for example.
-regex_available_types = r'^\b'+ r'\b|^\b'.join(available_types) +r'\b'
+available_types = ['video', 'audio', 'text', 'image']  # TODO: convert to enum. See userType for example.
+regex_available_types = r'^\b' + r'\b|^\b'.join(available_types) + r'\b'
 
 # --------------------------------------------------------------------------------
 #                                  Database Objects
@@ -27,9 +27,9 @@ client = MongoClient(os.getenv("DB_HOST", default="database"), 27017)
 database = client["server_database"]
 user_collection = database["users"]  # Create collection for users in database
 api_key_collection = database["api_key"]  # Create collection for API keys in database
-model_collection = database[ "models"]  # Create collection for models and their structures in database
-training_collection = database[ "training"]  # Create collection for training status and results
-object_collection = database["collections"]  # Create collection for objects in database
+model_collection = database["models"]  # Create collection for models and their structures in database
+training_collection = database["training"]  # Create collection for training status and results
+object_collection = database["objects"]  # Create collection for objects in database
 
 PAGINATION_PAGE_SIZE = 15
 
@@ -65,13 +65,11 @@ class UniversalMLPredictionObject(BaseModel):
     file_names: List[str] = []  # List of all file names that this is uploaded as
     hash_md5: str  # Video md5 hash
     type: constr(regex=regex_available_types)
-    # hash_sha1: str  # Video sha1 hash
-    # hash_perceptual: str  # Video perceptual hash
     users: list = []  # All users who have uploaded the video
     metadata: str = ""  # All video information stored as a string
     models: dict = {}  # ML Model results
-    tags: list = [] # Allow certified user to add tags when video is being uploaded
-    user_role_able_to_tag: list = [] #list of users allowed to add and remove tags
+    tags: list = []  # Allow certified user to add tags when video is being uploaded
+    user_role_able_to_tag: list = []  # list of users allowed to add and remove tags
 
 
 class MicroserviceConnection(BaseModel):
@@ -81,9 +79,8 @@ class MicroserviceConnection(BaseModel):
 
     name: str = Field(alias="modelName")
     socket: Optional[str] = Field(alias="modelSocket")
-    modelTags: Optional[str]= ''
+    modelTags: Optional[str] = ''
     modelType: constr(regex=regex_available_types)
-
 
     class Config:
         allow_population_by_field_name = True
@@ -101,7 +98,6 @@ class SearchFilter(BaseModel):
 
 
 class PredictionRequest(BaseModel):
-    
     models: List[str] = ()
     model_type: str = ''
 
@@ -143,7 +139,7 @@ class APIKeyData(BaseModel):
     """
 
     key: str
-    type: str # prediction or training
+    type: str  # prediction or training
     user: str  # Username of user associated with key
     detail: Optional[str] = ""
     enabled: bool
@@ -199,7 +195,8 @@ class LossFunction(BaseModel):
     LossFunction inside HTTP Request body (support only Tensorflow losses)
     """
     class_name: str
-    config: Optional[Dict[str,str]]
+    config: Optional[Dict[str, str]]
+
 
 class OptimizerModel(BaseModel):
     """
@@ -207,7 +204,8 @@ class OptimizerModel(BaseModel):
     """
     class_name: List[str]
     learning_rate: Optional[List[float]]
-    config: Optional[Dict[str,str]]
+    config: Optional[Dict[str, str]]
+
 
 class TrainingRequestHttpBody(BaseModel):
     """

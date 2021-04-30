@@ -129,69 +129,69 @@ def set_api_key_enabled_db(key: APIKeyData, enabled: bool) -> bool:
 # Prediction Object Database Interactions
 # ---------------------------
 
-def add_object_db(object: UniversalMLPredictionObject):
+def add_object_db(obj: UniversalMLPredictionObject):
     """
     Adds a new object to the database based on the UniversalMLPredictionObject model.
 
-    :param object: UniversalMLPredictionObject to add to database.
+    :param obj: UniversalMLPredictionObject to add to database.
     """
 
-    if not object_collection.find_one({"hash_md5": object.hash_md5}):
-        object_collection.insert_one(object.dict())
+    if not object_collection.find_one({"hash_md5": obj.hash_md5}):
+        object_collection.insert_one(obj.dict())
 
 
-def add_user_to_object(object: UniversalMLPredictionObject, username: str):
+def add_user_to_object(obj: UniversalMLPredictionObject, username: str):
     """
     Adds a user account to a UniversalMLPredictionObject record. This is used to track which users upload objects.
 
     :param v: UniversalMLPredictionObject to update
     :param username: Username of user who is accessing object
     """
-    if object_collection.find_one({"hash_md5": object.hash_md5}):
-        existing_users = list(object_collection.find_one({"hash_md5": object.hash_md5})['users'])
+    if object_collection.find_one({"hash_md5": obj.hash_md5}):
+        existing_users = list(object_collection.find_one({"hash_md5": obj.hash_md5})['users'])
         if username not in existing_users:  # Only update if not in list already
             existing_users.append(username)
             object_collection.update_one(
-                {"hash_md5": object.hash_md5},
+                {"hash_md5": obj.hash_md5},
                 {'$set': {'users': existing_users}}
             )
 
 
-def add_filename_to_object(object: UniversalMLPredictionObject, filename: str):
+def add_filename_to_object(obj: UniversalMLPredictionObject, filename: str):
     """
     Adds a filename to a UniversalMLPredictionObject record. This is used to track all file names that an object is uploaded to
     the server under. An object file is considered "the same" if their md5 hashes are identical.
 
-    :param object: UniversalMLPredictionObject to update
+    :param obj: UniversalMLPredictionObject to update
     :param filename: file name with extension
     """
-    if object_collection.find_one({"hash_md5": object.hash_md5}):
-        current_names = list(object_collection.find_one({"hash_md5": object.hash_md5})['file_names'])
+    if object_collection.find_one({"hash_md5": obj.hash_md5}):
+        current_names = list(object_collection.find_one({"hash_md5": obj.hash_md5})['file_names'])
         if filename not in current_names:  # Only update if not in list already
             current_names.append(filename)
             object_collection.update_one(
-                {"hash_md5": object.hash_md5},
+                {"hash_md5": obj.hash_md5},
                 {'$set': {'file_names': current_names}}
             )
 
 
-def add_model_to_object_db(object: UniversalMLPredictionObject, model_name, result):
+def add_model_to_object_db(obj: UniversalMLPredictionObject, model_name, result):
     """
     Adds prediction data to a UniversalMLPredictionObject object. This is normally called when a prediction microservice
     returns data to the server with the results of a prediction request. The 'metadata' field is always updated.
     in this method as a string to enable easy querying of nested model results.
 
-    :param object: UniversalMLPredictionObject to add prediction data to
+    :param obj: UniversalMLPredictionObject to add prediction data to
     :param model_name: Name of model that was run on the object.
     :param result: JSON results of the training
     """
 
-    new_metadata = [list(object.dict()['models'].values()), model_name, result] + object.file_names
+    new_metadata = [list(obj.dict()['models'].values()), model_name, result] + obj.file_names
     metadata_str = json.dumps(new_metadata)
     for char_to_replace in ['"', "'", "\\", '[', ']', '{', '}']:
         metadata_str = metadata_str.replace(char_to_replace, '')
 
-    object_collection.update_one({'hash_md5': object.hash_md5}, {'$set': {
+    object_collection.update_one({'hash_md5': obj.hash_md5}, {'$set': {
         'models.' + model_name: result,
         'metadata': metadata_str
     }})
@@ -272,13 +272,12 @@ def get_objects_from_user_db(
     return return_value
 
 
-
-def get_models_from_object_db(object: UniversalMLPredictionObject, model_name: str = ""):
+def get_models_from_object_db(obj: UniversalMLPredictionObject, model_name: str = ""):
     """
     Creates a dictionary of all models with prediction results for a given object. This is returned
     in the format of {modelName: result1, ...}.
 
-    :param object: UniversalMLPredictionObject to obtain model results from
+    :param obj: UniversalMLPredictionObject to obtain model results from
     :param model_name: Optional filter to return specific model name
     :return: Dictionary of model results
     """
@@ -288,14 +287,14 @@ def get_models_from_object_db(object: UniversalMLPredictionObject, model_name: s
         "models": 1
     }
 
-    if not object_collection.find_one({"hash_md5": object.hash_md5}):
+    if not object_collection.find_one({"hash_md5": obj.hash_md5}):
         return {}
 
     if model_name != "":
-        results = object_collection.find_one({"hash_md5": object.hash_md5}, projection)
+        results = object_collection.find_one({"hash_md5": obj.hash_md5}, projection)
         return {model_name: results['models'][model_name]}
     else:
-        return object_collection.find_one({"hash_md5": object.hash_md5}, projection)['models']
+        return object_collection.find_one({"hash_md5": obj.hash_md5}, projection)['models']
 
 
 def get_object_by_md5_hash_db(object_hash) -> Union[UniversalMLPredictionObject, None]:

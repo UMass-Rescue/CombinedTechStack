@@ -11,6 +11,7 @@ from spacy import displacy
 from collections import Counter
 import en_core_web_sm
 import truecase
+
 nlp = spacy.load("en_core_web_sm")
 import moviepy.editor as mp
 
@@ -26,7 +27,6 @@ def init():
     __tokenizer = Wav2Vec2Tokenizer.from_pretrained("facebook/wav2vec2-base-960h")
     global __model
     __model = Wav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-base-960h")
-
 
 
 def predict(prediction_object_path):
@@ -47,37 +47,35 @@ def predict(prediction_object_path):
     prediction_object_path will be in the form: "app/objects/file_name", where file_name is the video, image, etc. file.
     """
 
-    video = mp.VideoFileClip(prediction_object_path)
+    video = mp.VideoFileClip('/app/objects/' + prediction_object_path)
     ex_aud = video.audio
 
     ex_aud.write_audiofile("short1.wav")
 
     # Loading the audio file
-    audio, rate = librosa.load("short1.wav", sr = 16000)
+    audio, rate = librosa.load("short1.wav", sr=16000)
 
     # Importing Wav2Vec pretrained model
 
     def asr_transcript(tokenizer, model, input_file):
-        if(not tokenizer):
-            print("Not receving tokenizer", flush = True)
-
+        if not tokenizer:
+            print("Not receving tokenizer", flush=True)
 
         transcript = ""
-        pre, rate = librosa.load(input_file, sr= 16000)
-        sf.write("temp1.wav", pre, rate )
+        pre, rate = librosa.load(input_file, sr=16000)
+        sf.write("temp1.wav", pre, rate)
         stream = librosa.stream("temp1.wav",
-                                block_length = 25,
-                                frame_length = 16000,
-                                hop_length = 16000)
-
+                                block_length=25,
+                                frame_length=16000,
+                                hop_length=16000)
         for speech in stream:
             if len(speech.shape) > 1:
-                speech = speech[:,0] + speech[:,1]
+                speech = speech[:, 0] + speech[:, 1]
         input_values = tokenizer(speech, return_tensors="pt").input_values
         logits = model(input_values).logits
-        predicted_ids = torch.argmax(logits, dim = -1)
+        predicted_ids = torch.argmax(logits, dim=-1)
         transcription = tokenizer.batch_decode(predicted_ids)[0]
-        #print(transcription)
+        # print(transcription)
         transcript += truecase.get_true_case(transcription.lower())
 
         return transcript
@@ -88,16 +86,20 @@ def predict(prediction_object_path):
     # file1.write(short1_trans)
     # file = open("speech.txt", mode="r")
     # speech = file.read()
-    NER_dict ={'DATE':[], 'PERSON':[], 'GPE':[], 'ORG':[], 'TIME':[], 'LOC':[], 'LANGUAGE':[], 'PRODUCT': [], "FAC": []}
-    doc = nlp(short1_trans) # put the Speech.txt string into the nlp object (this pipeline automatically extracts NER entities)
+    ner_dict = {'DATE': [], 'PERSON': [], 'GPE': [], 'ORG': [], 'TIME': [], 'LOC': [], 'LANGUAGE': [], 'PRODUCT': [],
+                "FAC": []}
+
+    # put the Speech.txt string into the nlp object (this pipeline automatically extracts NER entities)
+    doc = nlp(short1_trans)
     for entities in doc.ents:
-        if (entities.label_ == "CARDINAL"):
+        if entities.label_ == "CARDINAL":
             nothing = "nothing"
         else:
             # print(f"word: {entities.text}: TAG: {entities.label_}")
-            NER_dict[entities.label_].append(entities.text)
+            ner_dict[entities.label_].append(entities.text)
 
     return {
-        'classes': ['DATE', 'PERSON', 'GPE', 'ORG', 'TIME', 'LOC', 'LANGUAGE', 'PRODUCT', "FAC"],  # List every class in the classifier
-        'result': NER_dict
+        'classes': ['DATE', 'PERSON', 'GPE', 'ORG', 'TIME', 'LOC', 'LANGUAGE', 'PRODUCT', "FAC"],
+        # List every class in the classifier
+        'result': ner_dict
     }

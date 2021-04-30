@@ -147,29 +147,27 @@ def create_new_prediction(models: List[str] = (),
         file.seek(0)
 
         if get_object_by_md5_hash_db(hash_md5):
-            object = get_object_by_md5_hash_db(hash_md5)
+            prediction_obj = get_object_by_md5_hash_db(hash_md5)
         else:  # If object does not already exist in db
 
             # Create a UniversalMLPredictionObject object to store data
-            object = UniversalMLPredictionObject(**{
+            prediction_obj = UniversalMLPredictionObject(**{
                 'file_names': [upload_file.filename],
                 'hash_md5': hash_md5,
                 'type': file_type,
-                'hash_sha1': 'TODO: Remove This Field',
-                'hash_perceptual': 'TODO: Remove This Field',
                 'users': [current_user.username],
                 'models': {},
                 'user_role_able_to_tag': ['admin']
             })
 
             # Add created object to database
-            add_object_db(object)
+            add_object_db(prediction_obj)
 
         # Associate the current user with the object that was uploaded
-        add_user_to_object(object, current_user.username)
+        add_user_to_object(prediction_obj, current_user.username)
 
         # Associate the name the file was uploaded under to the object
-        add_filename_to_object(object, upload_file.filename)
+        add_filename_to_object(prediction_obj, upload_file.filename)
 
         # Copy object to the temporary storage volume for prediction
         new_filename = hash_md5 + os.path.splitext(upload_file.filename)[1]
@@ -182,8 +180,8 @@ def create_new_prediction(models: List[str] = (),
                 'utility.main.predict_object', hash_md5, new_filename, job_id=hash_md5+model+str(uuid.uuid4())
             )
 
-
     return {"prediction objects": [hashes_md5[key] for key in hashes_md5]}
+
 
 @model_router.post("/results", dependencies=[Depends(current_user_investigator)])
 async def get_jobs(md5_hashes: List[str]):
