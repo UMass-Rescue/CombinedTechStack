@@ -24,7 +24,6 @@ def test_configuration():
     app.dependency_overrides[current_user_investigator] = override_logged_in_user
     app.dependency_overrides[current_user_researcher] = override_logged_in_user
     app.dependency_overrides[current_user_admin] = override_logged_in_user
-    app.dependency_overrides[prediction.get_api_key] = override_api_key_prediction
     app.dependency_overrides[training.get_api_key] = override_api_key_training
     # image1 = UniversalMLImage(**{
     #             'file_names': ['test_image_file_1.png'],
@@ -45,9 +44,6 @@ def test_configuration():
 
 def override_logged_in_user():
     return get_user_by_name_db("testing")
-
-def override_api_key_prediction():
-    return get_api_keys_by_user_db(get_user_by_name_db('api_key_testing'))[0]
 
 def override_api_key_training():
     return get_api_keys_by_user_db(get_user_by_name_db('api_key_testing'))[1]
