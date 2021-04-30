@@ -67,6 +67,8 @@ def predict(prediction_input):
     """
 
     global model, label_map, super_COCO_classes, classes, result, score_threshold
+    for key in result:
+        result[key] = 0
     image = Image.open('/app/images/' + prediction_input)
     image_tensor = transforms.functional.to_tensor(image)
 
