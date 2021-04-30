@@ -39,7 +39,8 @@ async def get_available_image_models():
     """
     imageModels = []
     for (key, value) in settings.model_types.items():
-        if value == "image":
+        if "image" in value:
+            print(value)
             imageModels.append(key)
     return {"models": imageModels}
 
@@ -50,8 +51,10 @@ async def get_available_video_models():
     with the request
     """
     videoModels = []
+    print(settings.model_types)
     for (key, value) in settings.model_types.items():
-        if value == "video":
+        if "video" in value:
+            print(value)
             videoModels.append(key)
     return {"models": videoModels}
 
@@ -81,7 +84,8 @@ async def get_prediction_model_types():
 
 
 @model_router.post("/predict")
-def create_new_prediction(objects: List[UploadFile] = File(...),
+def create_new_prediction(model_type: str,
+                          objects: List[UploadFile] = File(...),
                           models: List[str] = (),
                           current_user: User = Depends(current_user_investigator)):
     """
@@ -106,16 +110,13 @@ def create_new_prediction(objects: List[UploadFile] = File(...),
     for model in models:
         if model not in settings.available_models: 
             invalid_models.append(model)
+        if not model_type in settings.model_types[model]: #make sure correct model type selected
+            invalid_models.append(model)
   
     if invalid_models:
         error_message = "Invalid Models Specified: " + ''.join(invalid_models)
         return HTTPException(status_code=400, detail=error_message)
     
-    model_types = set([settings.model_types[model] for model in models])
-    if len(model_types) != 1:
-        error_message = "Multiple Model Types Specified: " + ''.join(model_types)
-        return HTTPException(status_code=400, detail=error_message)
-    model_type = model_types.pop()
     # Now we must hash each uploaded object
     # After hashing, we will store the object file on the server.
 
