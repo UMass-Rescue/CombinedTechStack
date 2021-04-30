@@ -75,7 +75,7 @@ def predict(prediction_object_path):
         pre, rate = librosa.load(input_file, sr= 16000)
         sf.write("temp1.wav", pre, rate )
         stream = librosa.stream("temp1.wav",
-                                block_length = 15,
+                                block_length = 25,
                                 frame_length = 16000,
                                 hop_length = 16000)
   
@@ -87,7 +87,7 @@ def predict(prediction_object_path):
         predicted_ids = torch.argmax(logits, dim = -1)
         transcription = tokenizer.batch_decode(predicted_ids)[0]
         #print(transcription)
-        transcript += truecase.get_true_case(transcription.lower()) + "\n"
+        transcript += truecase.get_true_case(transcription.lower())
 
         return transcript
 
@@ -101,7 +101,7 @@ def predict(prediction_object_path):
     # file1.write(short1_trans)
     # file = open("speech.txt", mode="r")
     # speech = file.read()
-    NER_dict ={'DATE':[], 'PERSON':[], 'GPE':[], 'ORG':[], 'TIME':[], 'LOC':[], 'LANGUAGE':[], 'PRODUCT': []}
+    NER_dict ={'DATE':[], 'PERSON':[], 'GPE':[], 'ORG':[], 'TIME':[], 'LOC':[], 'LANGUAGE':[], 'PRODUCT': [], "FAC": []}
     doc = nlp(short1_trans) # put the Speech.txt string into the nlp object (this pipeline automatically extracts NER entities)
     for entities in doc.ents:
         if (entities.label_ == "CARDINAL"):
@@ -113,6 +113,6 @@ def predict(prediction_object_path):
 
     print(NER_dict, flush = True)
     return {
-        'classes': ['DATE', 'PERSON', 'GPE', 'ORG', 'TIME', 'LOC', 'LANGUAGE', 'PRODUCT'],  # List every class in the classifier
+        'classes': ['DATE', 'PERSON', 'GPE', 'ORG', 'TIME', 'LOC', 'LANGUAGE', 'PRODUCT', "FAC"],  # List every class in the classifier
         'result': NER_dict
     }
