@@ -4,3 +4,4 @@ rq
 redis
 torch
 torchvision
+pymongo

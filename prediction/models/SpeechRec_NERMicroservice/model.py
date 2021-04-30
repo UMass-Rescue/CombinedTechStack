@@ -107,7 +107,7 @@ def predict(prediction_input):
             # print(f"word: {entities.text}: TAG: {entities.label_}")
             NER_dict[entities.label_].append(entities.text)
 
-    //print(NER_dict, flush = True)
+    # print(NER_dict, flush = True)
     return {
         'classes': ['DATE', 'PERSON', 'GPE', 'ORG', 'TIME', 'LOC', 'LANGUAGE', 'PRODUCT'],  # List every class in the classifier
         'result': NER_dict
