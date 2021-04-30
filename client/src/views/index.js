@@ -1,4 +1,4 @@
-export { default as Import } from './Import';
+export { default as Import } from './ImportImage';
 export { default as ImportVideo } from './ImportVideo';
 export { default as Review } from './Review';
 export { default as Train } from './Train';

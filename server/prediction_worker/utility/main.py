@@ -43,7 +43,6 @@ def send_prediction(hash, file_name, type):
 
     print("sending prediction")
     result = predict("/app/objects/"+file_name)  # where all prediction objects are stored
-    print("got prediction:"+result)
     # except:
     #     # Do not send prediction results to server on crash. 
     #     print('[Error] Model Prediction Crash. Model: [' + model_name + '] Hash:[' + image_hash + ']')
