@@ -11,7 +11,7 @@ import {
     Box,
     Chip
 } from '@material-ui/core';
-import ImageDropzone from "../../components/ImageDropzone/ImageDropzone";
+import VideoDropzone from "../../components/VideoDropzone/VideoDropzone";
 import Card from "@material-ui/core/Card";
 import Table from "@material-ui/core/Table";
 import TableRow from "@material-ui/core/TableRow";
@@ -52,12 +52,12 @@ const useStyles = makeStyles(theme => ({
         overflow: 'auto',
         maxHeight: '45vh',
     },
-    imageListContainer: {
+    videoListContainer: {
         width: '100%',
         height: '55vh',
         borderRadius: '0.6em',
     },
-    imageListTable: {
+    videoListTable: {
         overflow: 'auto',
         maxHeight: '45vh',
     },
@@ -80,14 +80,14 @@ const Import = () => {
     const [filesUploaded, setFilesUploaded] = useState([]); // Files successfully uploaded to server
     const [modelsAvailable, setModelsAvailable] = useState([]);  // Models available from the photoanalysisserver
     const [modelsToUse, setModelsToUse] = useState([]);  // Models for the photoanalysisserver to use on uploads
-    const [open, setOpen] = useState(false); // Handles state of image upload snackbar
+    const [open, setOpen] = useState(false); // Handles state of video upload snackbar
     const [allChecked, setAllChecked] = useState(false); // If all models are selected
     const [modelsTags, setModelsTags] = useState({}); // Models tags from the photoanalysisserver
 
     useEffect(() => {
         axios.request({
                 method: 'get', 
-                url: baseurl + api['model_predict_list'], 
+                url: baseurl + api['model_video_list'], 
                 headers: { Authorization: 'Bearer ' + Auth.token } 
             }).then((response) => {
                 setModelsAvailable(response.data['models']);
@@ -133,16 +133,16 @@ const Import = () => {
     }
 
 
-    function uploadImages() {
+    function uploadVideos() {
 
         const requestURL = baseurl + api['model_predict'];
         let currIndex = 0;
         while (currIndex < filesToUpload.length) {
 
-            // Upload images in batches of 3
-            for (let imageCount = 0; imageCount < 3; imageCount++) {
+            // Upload videos in batches of 3
+            for (let videoCount = 0; videoCount < 3; videoCount++) {
 
-                // Ensure we have an image to upload
+                // Ensure we have an video to upload
                 if (currIndex >= filesToUpload.length) {
                     break;
                 }
@@ -154,18 +154,20 @@ const Import = () => {
                     if (currIndex >= filesToUpload.length) {
                         break;
                     }
-                    formData.append('images', filesToUpload[currIndex]);
+                    formData.append('objects', filesToUpload[currIndex]);
                     fileNames.push(filesToUpload[currIndex].name);
                 }
                 for (let i = 0; i < modelsToUse.length; i++) {
                     formData.append('models', modelsToUse[i]);
                 }
 
+                const parameters = {'model_type':'video'}
+
                 const config = {
                     'Authorization': 'Bearer ' + Auth.token,
                     'content-type': 'multipart/form-data'
                 };
-                axios.request({ url: requestURL, method: 'post', headers: config, data: formData }).then((response) => {
+                axios.request({ url: requestURL, parameters, method: 'post', headers: config, data: formData, params: parameters }).then((response) => {
                     setOpen(true); // Display success message
                     setFilesUploaded(curr => [...curr, ...fileNames]);
                 });
@@ -182,7 +184,7 @@ const Import = () => {
         setOpen(false);
     };
 
-    function handleRemoveImage(filename) {
+    function handleRemoveVideo(filename) {
         const newList = filesToUpload.filter((item) => item.name !== filename);
         setFilesToUpload(newList);
     }
@@ -190,7 +192,7 @@ const Import = () => {
     return (
         <div className={classes.root}>
 
-            <ImageDropzone filelistfunction={addFilesToUpload} />
+            <VideoDropzone filelistfunction={addFilesToUpload} />
 
             <div style={{ marginTop: '1em' }}>
                 <Box display={{xs: 'none', md: 'block'}}>
@@ -199,12 +201,12 @@ const Import = () => {
                         spacing={2}
                     >
 
-                        {/*Header Card: Images*/}
+                        {/*Header Card: Videos*/}
                         <Grid item md={4}>
                             <Card className={classes.headerGridCard}>
                                 <CardContent>
                                     <Typography variant="h3">
-                                        1. Add Images
+                                        1. Add Videos
                                 </Typography>
                                 </CardContent>
                             </Card>
@@ -240,15 +242,15 @@ const Import = () => {
                 display="flex"
                 >
 
-                    {/*Train Images*/}
+                    {/*Train Videos*/}
                     <Grid item xs={12} md={4}>
-                        <Card className={classes.imageListContainer}>
+                        <Card className={classes.videoListContainer}>
                             <CardContent>
                                 <Typography variant="h5" style={{ marginBottom: '1em' }}>
-                                    Images
+                                    Videos
                                 </Typography>
 
-                                <TableContainer className={classes.imageListTable}>
+                                <TableContainer className={classes.videoListTable}>
                                     <Table stickyHeader aria-label="sticky table">
                                         <TableHead>
                                             <TableRow>
@@ -268,7 +270,7 @@ const Import = () => {
                                                                 <CheckCircleOutlineIcon />
                                                             </IconButton>
                                                         ) ||
-                                                            <IconButton aria-label="delete"  size="small" onClick={() => { handleRemoveImage(fileObject.name) }}>
+                                                            <IconButton aria-label="delete"  size="small" onClick={() => { handleRemoveVideo(fileObject.name) }}>
                                                               <DeleteIcon />
                                                             </IconButton>
                                                         }
@@ -369,13 +371,13 @@ const Import = () => {
                         </Card >
                     </Grid>
 
-                    {/* Upload Images*/}
+                    {/* Upload Videos*/}
                     <Grid item xs={12} md={4}>
                         <Card className={classes.uploadButtonContainer}>
                             <CardContent>
                                 <Button
                                     variant="contained" color="primary" type="button"
-                                    onClick={uploadImages} disabled={filesToUpload.length === 0 || modelsToUse.length === 0}
+                                    onClick={uploadVideos} disabled={filesToUpload.length === 0 || modelsToUse.length === 0}
                                     style={{ marginLeft: '30%', width: '40%'}}
                                 >
                                     Upload
@@ -389,7 +391,7 @@ const Import = () => {
 
                 <Snackbar open={open} autoHideDuration={6000} onClose={handleSnackbarClose} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
                     <Alert onClose={handleSnackbarClose} severity="success">
-                        <Typography variant="h5" component="h4">Images Successfully Uploaded</Typography>
+                        <Typography variant="h5" component="h4">Videos Successfully Uploaded</Typography>
                     </Alert>
                 </Snackbar>
 

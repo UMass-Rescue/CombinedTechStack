@@ -5,6 +5,7 @@ uvicorn
 python-multipart
 redis
 fastapi-plugins
+filetype
 pymongo
 rq
 requests
