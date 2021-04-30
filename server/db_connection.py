@@ -421,20 +421,6 @@ def get_models_db():
     model_list = {model['model_name']: model['model_fields'] for model in all_models}
     return model_list
 
-
-def get_models_db_by_type(data_type):
-    """
-    Creates a list of all registered models and their classes for a given data type. The return value is of the format
-    {modelName: [modelClass1, modelClass2, ...], ...}
-
-    :return: List of all models and their classes for that data type. [] if no models registered.
-    """
-    all_models = list(model_collection.find({"model_data_type":data_type}))
-    model_list = {model['model_name']: model['model_fields'] for model in all_models}
-    return model_list
-
-
-
 # ------------------------------
 # Training Database Interactions
 # ------------------------------
