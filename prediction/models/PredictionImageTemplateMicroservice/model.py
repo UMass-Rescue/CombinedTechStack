@@ -16,18 +16,28 @@ def init():
     time.sleep(1)
 
 
-def predict(image_file_name):
+def predict(prediction_object_path):
     """
     Interface method between model and server. This signature must not be
-    changed and your model must be able to predict given a file-like object
-    with the image as an input.
+    changed and your model must be able to create a prediction from the object
+    file that is passed in.
 
-    Note: All images are stored in a folder named 'images' one directory back.
-    You can access it with '/app/images/<image_file_name>' 
+    Depending on the model type as defined in model/config.py, this method will receive a different input:
+
+    'object'  :  Model receives a file name to an image file, opens it, and creates a prediction
+    'text'   :  Model receives a string of text and uses it to create a prediction.
+
+
+    Note: All objects are stored in the directory '/app/objects/' in the Docker container. You may assume that the file
+    path that is passed to this method is valid and that the image file exists.
+
+    prediction_object_path will be in the form: "app/objects/file_name", where file_name is the video, image, etc. file.
     """
 
-    image = Image.open('/app/images/'+image_file_name)
+    image = Image.open(prediction_object_path)
 
+    
+    
     return {
         'classes': ['isGreen', 'isRed'],  # List every class in the classifier
         'result': {  # For results, use the class names above with the result value
