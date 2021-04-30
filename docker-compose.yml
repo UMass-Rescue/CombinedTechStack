@@ -162,8 +162,6 @@ services:
       - prediction_images:/app/images
     environment:
       - GUNICORN_CMD_ARGS=--reload
-      - API_KEY=${API_KEY_PREDICTION}
-      - SERVER_SOCKET=${SERVER_SOCKET}
     depends_on:
       - redis
       - server
