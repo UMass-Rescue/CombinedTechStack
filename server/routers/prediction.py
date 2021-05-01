@@ -82,93 +82,6 @@ async def get_prediction_model_types():
     return {"tags": valid_workers}
 
 
-# TODO change the input to list of str
-@model_router.get("/text/results")
-def results_text_prediction(hashes_md5: str):
-    #results = [get_text_by_md5_hash_db(hash_md5) for hash_md5 in hashes_md5]
-    if get_text_by_md5_hash_db(hashes_md5):
-        return get_text_by_md5_hash_db(hashes_md5)
-    return {"msg": "hash not found in the database"}
-
-
-# TODO check the file is txt file
-@model_router.post("/text/predict")
-def create_prediction_on_image(text_files: List[UploadFile] = File(...), 
-                                models: List[str] = (), 
-                                current_user: User = Depends(current_user_investigator),
-                                author: List[str] = [], audience: List[str] = [], text_source: List[str]=[],
-                                time_stamp: List[str] = [], sequence_id: str = None
-                                ):
-    """
-    Create a new prediction request for any number of text files
-    """
-    # Start with error checking for the model list
-    if not models:
-        return HTTPException(status_code=400, detail="You must specify models to process images with")
-
-    invalid_models = []
-    for model in models:
-        if model not in settings.available_models:
-            invalid_models.append(model)
-
-    if invalid_models:
-        error_message = "Invalid Models Specified: " + ''.join(invalid_models)
-        return HTTPException(status_code=400, detail=error_message)
-    
-    # Now we must hash each uploaded image
-    # After hashing, we will store the image file on the server.
-
-    # !!!!WARNING no buffur size here, may need based on the file size
-    hashes_md5 = {} # hash md5 based on the text
-    
-    # Read from file and parse the file into string of text
-    # Sign each text a hash_md5, and store the information on the server
-    for text_file in text_files:
-        file_name = text_file.filename
-        file = text_file.file
-        data = file.read() # a string of the text
-        md5 = hashlib.md5()
-        if not data:
-            break
-        md5.update(data)
-        
-        # Give a unique id to this file, and make sure no same id in db
-        # Hash_md5 prevents duplicate objects
-        hash_md5 = md5.hexdigest()
-        hashes_md5[file_name] = hash_md5
-
-        if get_text_by_md5_hash_db(hash_md5):
-            text_object = get_text_by_md5_hash_db(hash_md5)
-        else:  # If image does not already exist in db
-        
-            # Create a UniversalMLImage object to store data
-            text_object = UniversalMLText(**{
-                'file_names': [file_name],
-                'hash_md5': hash_md5,
-                'users': [current_user.username],
-                'text_content': data,
-                'author': author,
-                'audience': audience,
-                'text_source': text_source,
-                'time_stamp': time_stamp,
-                'sequence_id': sequence_id,
-                'models': {}, # ML model results
-                'user_role_able_to_tag': ['admin']
-            })
-
-            # Add created text object to database
-            add_text_db(text_object)
-        
-        # use each model to predict image or text
-        for model in models:
-            dependency.prediction_queues[model].enqueue(
-                # hash = hash_md5, prediction_identifier = new_filename, model_type = "text"
-                'utility.main.predict_model', hash_md5, data, job_id=hash_md5+model+str(uuid.uuid4())
-            )
-
-    return {"texts": [hashes_md5[key] for key in hashes_md5]}
-
-
 @model_router.post("/predict")
 def create_new_prediction(models: List[str] = (),
                           model_type: str = Form(...),
@@ -215,14 +128,16 @@ def create_new_prediction(models: List[str] = (),
     #TODO: check file type and make sure it aligns with model type
     # Process uploaded objects
     for upload_file in objects:
-        file = upload_file.file
-        file_type = filetype.guess(file).mime.split("/")[0]
-        if model_type != file_type:
-            error_message = "Invalid type for object: " + upload_file.filename + 'is type:' + file_type
-            return HTTPException(status_code=400, detail=error_message)
+        file_obj = upload_file.file
+        # file_type = filetype.guess(file_obj).mime.split("/")[0]
+        # if model_type != file_type:
+        #     error_message = "Invalid type for object: " + upload_file.filename + 'is type:' + file_type
+        #     return HTTPException(status_code=400, detail=error_message)
         md5 = hashlib.md5()
+        
+        # Video , Image , Text
         while True:
-            data = file.read(buffer_size)
+            data = file_obj.read(buffer_size)
             if not data:
                 break
             md5.update(data)
@@ -231,7 +146,7 @@ def create_new_prediction(models: List[str] = (),
         hash_md5 = md5.hexdigest()
         hashes_md5[upload_file.filename] = hash_md5
 
-        file.seek(0)
+        file_obj.seek(0)
 
         if get_object_by_md5_hash_db(hash_md5):
             prediction_obj = get_object_by_md5_hash_db(hash_md5)
@@ -241,11 +156,15 @@ def create_new_prediction(models: List[str] = (),
             prediction_obj = UniversalMLPredictionObject(**{
                 'file_names': [upload_file.filename],
                 'hash_md5': hash_md5,
-                'type': file_type,
+                'type': model_type,
                 'users': [current_user.username],
                 'models': {},
                 'user_role_able_to_tag': ['admin']
             })
+
+            # For text file add text into the object
+            if model_type == 'text':
+                prediction_obj.text_content = file_obj.read()
 
             # Add created object to database
             add_object_db(prediction_obj)
@@ -257,15 +176,21 @@ def create_new_prediction(models: List[str] = (),
         add_filename_to_object(prediction_obj, upload_file.filename)
 
         # Copy object to the temporary storage volume for prediction
-        new_filename = hash_md5 + os.path.splitext(upload_file.filename)[1]
-        stored_object_path = "/app/prediction/" + new_filename
-        stored_object = open(stored_object_path, 'wb+')
-        shutil.copyfileobj(file, stored_object)
+        if model_type != 'text':
+            new_filename = hash_md5 + os.path.splitext(upload_file.filename)[1]
+            stored_object_path = "/app/prediction/" + new_filename
+            stored_object = open(stored_object_path, 'wb+')
+            shutil.copyfileobj(file_obj, stored_object)
 
-        for model in models:
-            Queue(name=model, connection=redis).enqueue(
-                'utility.main.predict_object', hash_md5, new_filename, job_id=hash_md5+model+str(uuid.uuid4())
-            )
+            for model in models:
+                Queue(name=model, connection=redis).enqueue(
+                    'utility.main.predict_object', hash_md5, new_filename, job_id=hash_md5+model+str(uuid.uuid4())
+                )
+        else:
+            for model in models:
+                Queue(name=model, connection=redis).enqueue(
+                    'utility.main.predict_object', hash_md5, data, job_id=hash_md5+model+str(uuid.uuid4())
+                )
 
     return {"prediction objects": [hashes_md5[key] for key in hashes_md5]}
 

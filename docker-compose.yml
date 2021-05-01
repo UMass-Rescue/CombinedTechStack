@@ -70,24 +70,24 @@ services:
       - server
 
   # TODO not working right now
-  worker_sentiment:
-    container_name: ${PREDICTION_SENTIMENT_TEXT}_worker
-    command: python3 worker.py
-    build:
-      context: .
-      dockerfile: server/prediction_worker/Dockerfile
-      args:
-        - MODEL_NAME=${PREDICTION_SENTIMENT_TEXT}
-    volumes:
-      - ./prediction/models/${PREDICTION_SENTIMENT_TEXT}:/app/model
-      - prediction_images:/app/images
-    environment:
-      - GUNICORN_CMD_ARGS=--reload
-      - API_KEY=${API_KEY_PREDICTION}
-      - SERVER_SOCKET=${SERVER_SOCKET}
-    depends_on:
-      - redis
-      - server
+  # worker_sentiment:
+  #   container_name: ${PREDICTION_SENTIMENT_TEXT}_worker
+  #   command: python3 worker.py
+  #   build:
+  #     context: .
+  #     dockerfile: server/prediction_worker/Dockerfile
+  #     args:
+  #       - MODEL_NAME=${PREDICTION_SENTIMENT_TEXT}
+  #   volumes:
+  #     - ./prediction/models/${PREDICTION_SENTIMENT_TEXT}:/app/model
+  #     - prediction_images:/app/images
+  #   environment:
+  #     - GUNICORN_CMD_ARGS=--reload
+  #     - API_KEY=${API_KEY_PREDICTION}
+  #     - SERVER_SOCKET=${SERVER_SOCKET}
+  #   depends_on:
+  #     - redis
+  #     - server
 
   # TODO delete this, used for testing the pipeline
   worker_simpletext:
@@ -100,7 +100,7 @@ services:
         - MODEL_NAME=${PREDICTION_SIMPLE_TEXT}
     volumes:
       - ./prediction/models/${PREDICTION_SIMPLE_TEXT}:/app/model
-      - prediction_images:/app/images
+      - prediction:/app/objects
     environment:
       - GUNICORN_CMD_ARGS=--reload
       - API_KEY=${API_KEY_PREDICTION}
@@ -109,44 +109,44 @@ services:
       - redis
       - server
     
-  worker_exampletext:
-    container_name: ${PREDICTION_EXAMPLE_TEXT}_worker
-    command: python3 worker.py
-    build:
-      context: .
-      dockerfile: server/prediction_worker/Dockerfile
-      args:
-        - MODEL_NAME=${PREDICTION_EXAMPLE_TEXT}
-    volumes:
-      - ./prediction/models/${PREDICTION_EXAMPLE_TEXT}:/app/model
-      - prediction_images:/app/images
-    environment:
-      - GUNICORN_CMD_ARGS=--reload
-      - API_KEY=${API_KEY_PREDICTION}
-      - SERVER_SOCKET=${SERVER_SOCKET}
-    depends_on:
-      - redis
-      - server
+  # worker_exampletext:
+  #   container_name: ${PREDICTION_EXAMPLE_TEXT}_worker
+  #   command: python3 worker.py
+  #   build:
+  #     context: .
+  #     dockerfile: server/prediction_worker/Dockerfile
+  #     args:
+  #       - MODEL_NAME=${PREDICTION_EXAMPLE_TEXT}
+  #   volumes:
+  #     - ./prediction/models/${PREDICTION_EXAMPLE_TEXT}:/app/model
+  #     - prediction_images:/app/images
+  #   environment:
+  #     - GUNICORN_CMD_ARGS=--reload
+  #     - API_KEY=${API_KEY_PREDICTION}
+  #     - SERVER_SOCKET=${SERVER_SOCKET}
+  #   depends_on:
+  #     - redis
+  #     - server
 
   # TODO test this model
-  worker_nertext:
-    container_name: ${PREDICTION_NER_TEXT}_worker
-    command: python3 worker.py
-    build:
-      context: .
-      dockerfile: server/prediction_worker/Dockerfile
-      args:
-        - MODEL_NAME=${PREDICTION_NER_TEXT}
-    volumes:
-      - ./prediction/models/${PREDICTION_NER_TEXT}:/app/model
-      - prediction_images:/app/images
-    environment:
-      - GUNICORN_CMD_ARGS=--reload
-      - API_KEY=${API_KEY_PREDICTION}
-      - SERVER_SOCKET=${SERVER_SOCKET}
-    depends_on:
-      - redis
-      - server
+  # worker_nertext:
+  #   container_name: ${PREDICTION_NER_TEXT}_worker
+  #   command: python3 worker.py
+  #   build:
+  #     context: .
+  #     dockerfile: server/prediction_worker/Dockerfile
+  #     args:
+  #       - MODEL_NAME=${PREDICTION_NER_TEXT}
+  #   volumes:
+  #     - ./prediction/models/${PREDICTION_NER_TEXT}:/app/model
+  #     - prediction_images:/app/images
+  #   environment:
+  #     - GUNICORN_CMD_ARGS=--reload
+  #     - API_KEY=${API_KEY_PREDICTION}
+  #     - SERVER_SOCKET=${SERVER_SOCKET}
+  #   depends_on:
+  #     - redis
+  #     - server
 
 
   worker_average_pixel:
