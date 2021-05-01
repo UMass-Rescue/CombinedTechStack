@@ -10,7 +10,8 @@ import {
     NotFound as NotFoundView,
     Login as LoginView,
     Home as HomeView,
-    Train as TrainView
+    Train as TrainView,
+    ImportVideo as ImportVideoView
 } from './views';
 
 
@@ -18,7 +19,8 @@ export const routePermissions = {
     home: ['*'],
     import: ['admin', 'investigator'],
     review: ['admin', 'investigator'],
-    train: ['admin', 'researcher']
+    train: ['admin', 'researcher'],
+    importVideo: ['admin', 'investigator']
 }
 
 
@@ -52,6 +54,14 @@ const Routes = () => {
                 useAuth={true}
                 permissions={routePermissions['import']}
                 path="/import"
+            />
+            <RouteWithLayout
+                component={ImportVideoView}
+                exact
+                layout={MainLayout}
+                useAuth={true}
+                permissions={routePermissions['importVideo']}
+                path="/import/video"
             />
             <RouteWithLayout
                 component={ReviewView}

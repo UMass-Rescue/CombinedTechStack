@@ -6,10 +6,14 @@ WORKDIR /app
 ARG MODEL_NAME 
 
 # Copy the specific requirements file to our container for installing.
-COPY "../../prediction/models/${MODEL_NAME}/requirements.txt" /app
+COPY ./prediction/models/${MODEL_NAME}/requirements.txt /app
 
-# Install requirementss
+# Install requirements.
 RUN pip --no-cache-dir install -r requirements.txt
+
+RUN apt-get update && \
+      apt-get -y install sudo
+RUN sudo apt-get install libsndfile1 -y
 
 COPY server/prediction_worker/worker.py /app
 COPY server/prediction_worker/utility/* /app/utility/

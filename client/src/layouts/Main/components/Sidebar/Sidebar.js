@@ -44,9 +44,15 @@ const Sidebar = props => {
       icon: <HomeIcon />
     },
     {
-      title: 'Import',
+      title: 'Import Picture',
       href: '/import',
       permissions: routePermissions['import'],
+      icon: <ImportExport />
+    },
+    {
+      title: 'Import Video',
+      href: '/import/video',
+      permissions: routePermissions['importVideo'],
       icon: <ImportExport />
     },
     {

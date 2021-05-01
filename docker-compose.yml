@@ -26,7 +26,7 @@ services:
       - GUNICORN_CMD_ARGS=--reload
     volumes:
       - ./server/:/app
-      - prediction_images:/app/prediction_images
+      - prediction:/app/prediction
       - training_results:/app/training_results
     ports:
       - ${SERVER_PORT}:${SERVER_PORT}
@@ -35,21 +35,36 @@ services:
   #           Prediction Microservice Workers
   # ------------------------------------------------------------------------------
 
-  worker_example_model:
-    container_name: ${PREDICTION_TEMPLATE}_worker
+  worker_example_image_model:
+    container_name: ${PREDICTION_IMAGE_TEMPLATE}_worker
     command: python3 worker.py
     build:
       context: .
       dockerfile: server/prediction_worker/Dockerfile
       args:
-        - MODEL_NAME=${PREDICTION_TEMPLATE}
+        - MODEL_NAME=${PREDICTION_IMAGE_TEMPLATE}
     volumes:
-      - ./prediction/models/${PREDICTION_TEMPLATE}:/app/model
-      - prediction_images:/app/images
+      - ./prediction/models/${PREDICTION_IMAGE_TEMPLATE}:/app/model
+      - prediction:/app/objects
     environment:
       - GUNICORN_CMD_ARGS=--reload
-      - API_KEY=${API_KEY_PREDICTION}
-      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
+
+  worker_example_video_model:
+    container_name: ${PREDICTION_VIDEO_TEMPLATE}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: prediction/models/${PREDICTION_VIDEO_TEMPLATE}/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_VIDEO_TEMPLATE}
+    volumes:
+      - ./prediction/models/${PREDICTION_VIDEO_TEMPLATE}:/app/model
+      - prediction:/app/objects
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
     depends_on:
       - redis
       - server
@@ -144,11 +159,9 @@ services:
         - MODEL_NAME=${PREDICTION_AVERAGE_PIXEL}
     volumes:
       - ./prediction/models/${PREDICTION_AVERAGE_PIXEL}:/app/model
-      - prediction_images:/app/images
+      - prediction:/app/objects
     environment:
       - GUNICORN_CMD_ARGS=--reload
-      - API_KEY=${API_KEY_PREDICTION}
-      - SERVER_SOCKET=${SERVER_SOCKET}
     depends_on:
       - redis
       - server
@@ -163,11 +176,26 @@ services:
         - MODEL_NAME=${PREDICTION_FACE_DETECT}
     volumes:
       - ./prediction/models/${PREDICTION_FACE_DETECT}:/app/model
-      - prediction_images:/app/images
+      - prediction:/app/objects
     environment:
       - GUNICORN_CMD_ARGS=--reload
-      - API_KEY=${API_KEY_PREDICTION}
-      - SERVER_SOCKET=${SERVER_SOCKET}
+    depends_on:
+      - redis
+      - server
+
+  worker_speech_rec:
+    container_name: ${PREDICTION_SPEECH_REC}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: prediction/models/${PREDICTION_SPEECH_REC}/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_SPEECH_REC}
+    volumes:
+      - ./prediction/models/${PREDICTION_SPEECH_REC}:/app/model
+      - prediction:/app/objects
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
     depends_on:
       - redis
       - server
@@ -182,11 +210,9 @@ services:
         - MODEL_NAME=${PREDICTION_IMAGE_HASH}
     volumes:
       - ./prediction/models/${PREDICTION_IMAGE_HASH}:/app/model
-      - prediction_images:/app/images
+      - prediction:/app/objects
     environment:
       - GUNICORN_CMD_ARGS=--reload
-      - API_KEY=${API_KEY_PREDICTION}
-      - SERVER_SOCKET=${SERVER_SOCKET}
     depends_on:
       - redis
       - server
@@ -201,11 +227,9 @@ services:
         - MODEL_NAME=${PREDICTION_IMAGE_SHAPE}
     volumes:
       - ./prediction/models/${PREDICTION_IMAGE_SHAPE}:/app/model
-      - prediction_images:/app/images
+      - prediction:/app/objects
     environment:
       - GUNICORN_CMD_ARGS=--reload
-      - API_KEY=${API_KEY_PREDICTION}
-      - SERVER_SOCKET=${SERVER_SOCKET}
     depends_on:
       - redis
       - server
@@ -220,14 +244,29 @@ services:
         - MODEL_NAME=${PREDICTION_SCENE_DETECT}
     volumes:
       - ./prediction/models/${PREDICTION_SCENE_DETECT}:/app/model
-      - prediction_images:/app/images
+      - prediction:/app/objects
     environment:
       - GUNICORN_CMD_ARGS=--reload
-      - API_KEY=${API_KEY_PREDICTION}
-      - SERVER_SOCKET=${SERVER_SOCKET}
     depends_on:
       - redis
-      - server                          
+      - server
+
+  worker_object_detection:
+    container_name: ${PREDICTION_OBJECT_DETECTION}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction_worker/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_OBJECT_DETECTION}
+    volumes:
+      - ./prediction/models/${PREDICTION_OBJECT_DETECTION}:/app/model
+      - prediction:/app/objects
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+    depends_on:
+      - redis
+      - server
 
   # ------------------------------------------------------------------------------
   #           Training Microservices
@@ -308,7 +347,7 @@ services:
 
 volumes:
   db_container:
-  prediction_images:
+  prediction:
   training_results:
 
   # Dataset volumes
