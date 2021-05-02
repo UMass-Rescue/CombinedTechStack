@@ -125,8 +125,9 @@ def set_api_key_enabled_db(key: APIKeyData, enabled: bool) -> bool:
     return True
 
 
+
 # ---------------------------
-# Prediction Object Database Interactions
+# Image Database Interactions
 # ---------------------------
 
 def add_object_db(obj: UniversalMLPredictionObject):

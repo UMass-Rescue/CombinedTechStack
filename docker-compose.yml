@@ -52,6 +52,7 @@ services:
       - redis
       - server
 
+
   worker_example_video_model:
     container_name: ${PREDICTION_VIDEO_TEMPLATE}_worker
     command: python3 worker.py
@@ -68,6 +69,63 @@ services:
     depends_on:
       - redis
       - server
+
+
+  # sentiment analysis on text
+  worker_sentiment:
+    container_name: ${PREDICTION_SENTIMENT_TEXT}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction_worker/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_SENTIMENT_TEXT}
+    volumes:
+      - ./prediction/models/${PREDICTION_SENTIMENT_TEXT}:/app/model
+      - prediction:/app/objects
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+    depends_on:
+      - redis
+      - server
+
+
+  # Simple test on the text pipeline, return positive 1
+  worker_simpletext:
+    container_name: ${PREDICTION_SIMPLE_TEXT}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction_worker/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_SIMPLE_TEXT}
+    volumes:
+      - ./prediction/models/${PREDICTION_SIMPLE_TEXT}:/app/model
+      - prediction:/app/objects
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+    depends_on:
+      - redis
+      - server
+    
+
+  worker_nertext:
+    container_name: ${PREDICTION_NER_TEXT}_worker
+    command: python3 worker.py
+    build:
+      context: .
+      dockerfile: server/prediction_worker/Dockerfile
+      args:
+        - MODEL_NAME=${PREDICTION_NER_TEXT}
+    volumes:
+      - ./prediction/models/${PREDICTION_NER_TEXT}:/app/model
+      - prediction:/app/objects
+    environment:
+      - GUNICORN_CMD_ARGS=--reload
+    depends_on:
+      - redis
+      - server
+
 
   worker_average_pixel:
     container_name: ${PREDICTION_AVERAGE_PIXEL}_worker

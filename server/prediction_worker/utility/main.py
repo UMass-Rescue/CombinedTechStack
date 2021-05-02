@@ -9,9 +9,9 @@ database_object_collection = client['server_database']['objects']
 database_model_collection = client['server_database']['models']
 
 
-def predict_object(object_hash, object_file_name):
+def predict_object(object_hash, prediction_obj):
     try:
-        result = predict(object_file_name)  # Create prediction on model
+        result = predict(prediction_obj)  # Create prediction on model
     except Exception as e:
         # Do not send prediction results to server on crash.
         print(e)
@@ -37,5 +37,6 @@ def predict_object(object_hash, object_file_name):
     if not database_model_collection.find_one({'model_name': model_name}):
         database_model_collection.insert_one({
             'model_name': model_name,
-            'model_fields': result['classes']
+            'model_fields': result['classes'],
+            'model_type': model_type
         })

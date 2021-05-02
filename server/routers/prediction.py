@@ -12,10 +12,9 @@ from rq.job import Job
 from rq import Worker
 
 from routers.auth import current_user_investigator
-from dependency import logger, MicroserviceConnection, settings, redis, User, pool, UniversalMLPredictionObject, PredictionRequest
+from dependency import redis, User, UniversalMLPredictionObject
 from db_connection import add_object_db, add_user_to_object, get_objects_from_user_db, get_object_by_md5_hash_db, \
-    get_api_key_by_key_db, add_filename_to_object, add_model_to_object_db, get_models_db, add_model_db, \
-    update_tags_to_object, update_role_to_tag_object
+    add_filename_to_object, get_models_db, update_tags_to_object, update_role_to_tag_object
 from typing import List
 from rq import Queue
 import uuid
@@ -123,14 +122,16 @@ def create_new_prediction(models: List[str] = (),
 
     # Process uploaded objects
     for upload_file in objects:
-        file = upload_file.file
-        file_type = filetype.guess(file).mime.split("/")[0]
-        if model_type != file_type:
-            error_message = "Invalid type for object: " + upload_file.filename + 'is type:' + file_type
-            return HTTPException(status_code=400, detail=error_message)
+        file_obj = upload_file.file
+        # file_type = filetype.guess(file_obj).mime.split("/")[0]
+        # if model_type != file_type:
+        #     error_message = "Invalid type for object: " + upload_file.filename + 'is type:' + file_type
+        #     return HTTPException(status_code=400, detail=error_message)
         md5 = hashlib.md5()
+        
+        # Video , Image , Text
         while True:
-            data = file.read(buffer_size)
+            data = file_obj.read(buffer_size)
             if not data:
                 break
             md5.update(data)
@@ -139,7 +140,7 @@ def create_new_prediction(models: List[str] = (),
         hash_md5 = md5.hexdigest()
         hashes_md5[upload_file.filename] = hash_md5
 
-        file.seek(0)
+        file_obj.seek(0)
 
         if get_object_by_md5_hash_db(hash_md5):
             prediction_obj = get_object_by_md5_hash_db(hash_md5)
@@ -149,11 +150,15 @@ def create_new_prediction(models: List[str] = (),
             prediction_obj = UniversalMLPredictionObject(**{
                 'file_names': [upload_file.filename],
                 'hash_md5': hash_md5,
-                'type': file_type,
+                'type': model_type,
                 'users': [current_user.username],
                 'models': {},
                 'user_role_able_to_tag': ['admin']
             })
+
+            # For text file add text into the object
+            if model_type == 'text':
+                prediction_obj.text_content = file_obj.read()
 
             # Add created object to database
             add_object_db(prediction_obj)
@@ -165,15 +170,24 @@ def create_new_prediction(models: List[str] = (),
         add_filename_to_object(prediction_obj, upload_file.filename)
 
         # Copy object to the temporary storage volume for prediction
-        new_filename = hash_md5 + os.path.splitext(upload_file.filename)[1]
-        stored_object_path = "/app/prediction/" + new_filename
-        stored_object = open(stored_object_path, 'wb+')
-        shutil.copyfileobj(file, stored_object)
+        if model_type != 'text':
+            new_filename = hash_md5 + os.path.splitext(upload_file.filename)[1]
+            stored_object_path = "/app/prediction/" + new_filename
+            stored_object = open(stored_object_path, 'wb+')
+            shutil.copyfileobj(file_obj, stored_object)
 
-        for model in models:
-            Queue(name=model, connection=redis).enqueue(
-                'utility.main.predict_object', hash_md5, new_filename, job_id=hash_md5+model+str(uuid.uuid4())
-            )
+            for model in models:
+                Queue(name=model, connection=redis).enqueue(
+                    'utility.main.predict_object', hash_md5, new_filename, job_id=hash_md5+model+str(uuid.uuid4())
+                )
+        # just for text, because instead of file_name, text predict takes the text content
+        else:
+            text_content = file_obj.read()
+            text_content = text_content.decode('UTF-8')
+            for model in models:
+                Queue(name=model, connection=redis).enqueue(
+                    'utility.main.predict_object', hash_md5, text_content, job_id=hash_md5+model+str(uuid.uuid4())
+                )
 
     return {"prediction objects": [hashes_md5[key] for key in hashes_md5]}
 
