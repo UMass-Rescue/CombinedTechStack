@@ -186,10 +186,13 @@ def create_new_prediction(models: List[str] = (),
                 Queue(name=model, connection=redis).enqueue(
                     'utility.main.predict_object', hash_md5, new_filename, job_id=hash_md5+model+str(uuid.uuid4())
                 )
+        # just for text, because instead of file_name, text predict takes the text content
         else:
+            text_content = file_obj.read()
+            text_content = text_content.decode('UTF-8')
             for model in models:
                 Queue(name=model, connection=redis).enqueue(
-                    'utility.main.predict_object', hash_md5, data, job_id=hash_md5+model+str(uuid.uuid4())
+                    'utility.main.predict_object', hash_md5, text_content, job_id=hash_md5+model+str(uuid.uuid4())
                 )
 
     return {"prediction objects": [hashes_md5[key] for key in hashes_md5]}

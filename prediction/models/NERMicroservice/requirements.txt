@@ -1,6 +1,6 @@
-pillow
 requests
 rq
 redis
-tensorflow
+pymongo
 transformers
+tensorflow
