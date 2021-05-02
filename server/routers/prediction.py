@@ -12,7 +12,7 @@ from rq.job import Job
 from rq import Worker
 
 from routers.auth import current_user_investigator
-from dependency import logger, MicroserviceConnection, settings, redis, User, pool, UniversalMLPredictionObject, PredictionRequest
+from dependency import logger, MicroserviceConnection, settings, redis, User, pool, UniversalMLPredictionObject,
 from db_connection import add_object_db, add_user_to_object, get_objects_from_user_db, get_object_by_md5_hash_db, \
     get_api_key_by_key_db, add_filename_to_object, add_model_to_object_db, get_models_db, add_model_db, \
     update_tags_to_object, update_role_to_tag_object
