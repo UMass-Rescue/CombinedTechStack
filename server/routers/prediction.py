@@ -31,6 +31,7 @@ def get_model_names():
     """
     return {"models": get_available_prediction_models()}
 
+
 @model_router.get("/list/image", dependencies=[Depends(current_user_investigator)])
 async def get_available_image_models():
     """
@@ -40,6 +41,7 @@ async def get_available_image_models():
 
     return {"models": get_models_by_type("image")}
 
+
 @model_router.get("/list/video", dependencies=[Depends(current_user_investigator)])
 async def get_available_video_models():
     """
@@ -48,6 +50,14 @@ async def get_available_video_models():
     """
     return {"models": get_models_by_type("video")}
 
+
+@model_router.get("/list/text", dependencies=[Depends(current_user_investigator)])
+async def get_available_text_models():
+    """
+    Returns list of available models to the client. This list can be used when calling get_prediction,
+    with the request
+    """
+    return {"models": get_models_by_type("text")}
 
 
 @model_router.get("/all", dependencies=[Depends(current_user_investigator)])
