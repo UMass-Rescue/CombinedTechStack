@@ -98,11 +98,6 @@ def create_new_prediction(models: List[str] = (),
     :return: Unique keys for each object uploaded in objects.
     """
 
-    # models = p.models
-    # model_type = p.model_type
-    # objects = p.objects
-
-
     # Start with error checking on the models list.
     # Ensure that all desired models are valid.
     if not models:
@@ -112,7 +107,8 @@ def create_new_prediction(models: List[str] = (),
     for model in models:
         if model not in get_available_prediction_models():
             invalid_models.append(model)
-        if not model in get_models_by_type(model_type): #make sure correct model type selected
+        # make sure models alighn with the model_type
+        if not model in get_models_by_type(model_type): 
             invalid_models.append(model)
 
     if invalid_models:
@@ -125,7 +121,6 @@ def create_new_prediction(models: List[str] = (),
     buffer_size = 65536  # Read object data in 64KB Chunks for hashlib
     hashes_md5 = {}
 
-    #TODO: check file type and make sure it aligns with model type
     # Process uploaded objects
     for upload_file in objects:
         file = upload_file.file
