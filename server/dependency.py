@@ -97,11 +97,6 @@ class SearchFilter(BaseModel):
     search_filter: dict
 
 
-class PredictionRequest(BaseModel):
-    models: List[str] = ()
-    model_type: str = ''
-
-
 # --------------------------------------------------------------------------------
 #                             Authentication Objects
 # --------------------------------------------------------------------------------
