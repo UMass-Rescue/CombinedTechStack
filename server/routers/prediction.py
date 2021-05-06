@@ -365,17 +365,16 @@ def receive_prediction_results(model_prediction_result: dependency.ModelPredicti
 
 
 @model_router.post("/tag/update")
-async def update_image_tags(md5_hashes: List[str], username: str, remove_tags: List[str] = [], new_tags: List[str] = []):
+async def update_image_tags(md5_hashes: List[str], username: str, new_tags: List[str] = []):
     """
     Find list of images and add tags into its universalMLimage object "tags" field
 
     :param md5_hashes: List of hashes for universal ml image object
     :param username: username of the current user
-    :param remove_tags: list of image tags that needs to remove
     :param new_tags: list of image tags that need to be added to image object
     :return: json with status and detail
     """
-    result = update_tags_to_image(md5_hashes, username, remove_tags, new_tags)
+    result = update_tags_to_image(md5_hashes, username, new_tags)
     return result
 
 

@@ -311,7 +311,7 @@ def get_image_by_md5_hash_db(image_hash) -> Union[UniversalMLImage, None]:
     return UniversalMLImage(**result)
 
 
-def update_tags_to_image(hashes_md5: [str], username: str, remove_tags: [str], new_tags: [str]):
+def update_tags_to_image(hashes_md5: [str], username: str, new_tags: [str]):
     """
     This method recieves two tags, where user can choose an tag and update it into a new tag
 
@@ -319,7 +319,6 @@ def update_tags_to_image(hashes_md5: [str], username: str, remove_tags: [str], n
         username: user that is updating the tags
     request body:
         hashes_md5: list of md5 hashes
-        remove_tags: list of tags needs to be remove from images, default []
         new_tags: list of tags needs to be added to images, default []
     return:
         always return a list with status message in it
@@ -332,12 +331,9 @@ def update_tags_to_image(hashes_md5: [str], username: str, remove_tags: [str], n
             if image_collection.find_one({"hash_md5": hash_md5}):
                 authed_roles = image_collection.find_one({"hash_md5": hash_md5})['user_role_able_to_tag']
                 if set(roles) & set(authed_roles): # update tags here
-                    existing_tags = image_collection.find_one({"hash_md5": hash_md5})['tags']
-                    existing_tags = list(set(existing_tags) - set(remove_tags) - set(new_tags))
-                    existing_tags = existing_tags + new_tags
                     image_collection.update_one(
                     {"hash_md5": hash_md5},
-                    {'$set': {'tags': list(existing_tags)}}
+                    {'$set': {'tags': list(new_tags)}}
                     )
                     result.append({'status': 'success', 'detail': hash_md5 + ' updated tags'})
                 else:
