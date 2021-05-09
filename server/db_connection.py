@@ -314,7 +314,6 @@ def get_object_by_md5_hash_db(object_hash) -> Union[UniversalMLPredictionObject,
     return UniversalMLPredictionObject(**result)
 
 
-
 def update_tags_to_object(hashes_md5: [str], username: str, remove_tags: [str], new_tags: [str]):
     """
     This method recieves two tags, where user can choose an tag and update it into a new tag
@@ -323,8 +322,8 @@ def update_tags_to_object(hashes_md5: [str], username: str, remove_tags: [str], 
         username: user that is updating the tags
     request body:
         hashes_md5: list of md5 hashes
-        remove_tags: list of tags needs to be remove from objects, default []
         new_tags: list of tags needs to be added to objects, default []
+        remove_tags: list of tags needs to be remove from objects, default []
     return:
         always return a list with status message in it
     """
@@ -337,12 +336,9 @@ def update_tags_to_object(hashes_md5: [str], username: str, remove_tags: [str], 
                 object = get_object_by_md5_hash_db(hash_md5)
                 authed_roles = object['user_role_able_to_tag']
                 if set(roles) & set(authed_roles): # update tags here
-                    existing_tags = object['tags']
-                    existing_tags = list(set(existing_tags) - set(remove_tags) - set(new_tags))
-                    existing_tags = existing_tags + new_tags
-                    object.update_one(
+                    image_collection.update_one(
                     {"hash_md5": hash_md5},
-                    {'$set': {'tags': list(existing_tags)}}
+                    {'$set': {'tags': list(new_tags)}}
                     )
                     result.append({'status': 'success', 'detail': hash_md5 + ' updated tags'})
                 else:
