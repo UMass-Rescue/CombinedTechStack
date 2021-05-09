@@ -371,11 +371,11 @@ def update_role_to_tag_object(hashes_md5: [str], username: str, remove_roles: [s
         if set(user.roles) & {"admin", "investigator", "researcher"}: # currently all roles can access this function
             for hash_md5 in hashes_md5:
                 if get_object_by_md5_hash_db(hash_md5):
-                    object = get_object_by_md5_hash_db(hash_md5)
-                    current_authed_role = object['user_role_able_to_tag']
+                    role_obj = get_object_by_md5_hash_db(hash_md5)
+                    current_authed_role = role_obj['user_role_able_to_tag']
                     current_authed_role = list(set(current_authed_role) - set(remove_roles) - set(new_roles))
                     current_authed_role = current_authed_role + new_roles
-                    object.update_one(
+                    role_obj.update_one(
                         {"hash_md5": hash_md5},
                         {'$set': {'user_role_able_to_tag': list(current_authed_role)}}
                     )
@@ -392,23 +392,6 @@ def update_role_to_tag_object(hashes_md5: [str], username: str, remove_roles: [s
 # ---------------------------
 
 
-def add_model_db(model_name: str, model_fields: List[str], model_type: str):
-    """
-    Adds information on the name and fields of a model to the model collection of the database. This is used when
-    models register themselves to the server so that prediction requests know what fields to expect in the results.
-
-    :param model_name: Name of model
-    :param model_fields: List of all possible classes model may return
-    :param model_type: Data type of model
-    """
-    if not model_collection.find_one({'model_name': model_name}):
-        model_collection.insert_one({
-            'model_name': model_name,
-            'model_fields': model_fields,
-            "model_data_type": model_type
-        })
-
-
 def get_models_db():
     """
     Creates a list of all registered models and their classes. The return value is of the format
@@ -417,12 +400,14 @@ def get_models_db():
     :return: List of all models and their classes. [] if no models registered.
     """
     all_models = list(model_collection.find())
-    model_list = {model['model_name']: model['model_fields'] for model in all_models}
+    model_list = {model['model_name']: {'fields': model['model_fields'], 'type': model['model_type']} for model in all_models}
     return model_list
+
 
 # ------------------------------
 # Training Database Interactions
 # ------------------------------
+
 
 def add_training_result_db(tr: TrainingResult):
     if not training_collection.find_one({'training_id': tr.training_id}):

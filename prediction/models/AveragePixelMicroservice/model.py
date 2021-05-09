@@ -20,7 +20,7 @@ def predict(image_file_name):
     with the image as an input.
     """
 
-    image = Image.open('/app/images/'+image_file_name)
+    image = Image.open('/app/objects/'+image_file_name)
     stat = Stat(image)
     av_r = stat.mean[0]
     av_g = stat.mean[1]

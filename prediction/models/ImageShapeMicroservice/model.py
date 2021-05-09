@@ -18,7 +18,7 @@ def predict(image_file_name):
     with the image as an input.
     """
 
-    image = Image.open('/app/images/'+image_file_name)
+    image = Image.open('/app/objects/'+image_file_name)
 
     width, height = image.size
 

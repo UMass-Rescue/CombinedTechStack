@@ -24,43 +24,19 @@ model_router = APIRouter()
 
 
 @model_router.get("/list", dependencies=[Depends(current_user_investigator)])
-def get_model_names():
+async def get_prediction_models(model_type: str = ''):
     """
-    Returns list of available models to the client. This list can be used when calling get_prediction,
-    with the request
-    """
-    return {"models": get_available_prediction_models()}
-
-
-@model_router.get("/list/image", dependencies=[Depends(current_user_investigator)])
-async def get_available_image_models():
-    """
-    Returns list of available models to the client. This list can be used when calling get_prediction,
-    with the request
+    Returns a list of available models to the client. This will be filtered by an optional type of "image", "text",
+    or "video". If no type is specified, then all available models will be returned
     """
 
-    return {"models": get_models_by_type("image")}
+    if model_type == '':
+        get_available_prediction_models()
+
+    return {"models": get_models_by_type(model_type)}
 
 
-@model_router.get("/list/video", dependencies=[Depends(current_user_investigator)])
-async def get_available_video_models():
-    """
-    Returns list of available models to the client. This list can be used when calling get_prediction,
-    with the request
-    """
-    return {"models": get_models_by_type("video")}
-
-
-@model_router.get("/list/text", dependencies=[Depends(current_user_investigator)])
-async def get_available_text_models():
-    """
-    Returns list of available models to the client. This list can be used when calling get_prediction,
-    with the request
-    """
-    return {"models": get_models_by_type("text")}
-
-
-@model_router.get("/all", dependencies=[Depends(current_user_investigator)])
+@model_router.get("/list/all", dependencies=[Depends(current_user_investigator)])
 async def get_all_prediction_models():
     """
     Returns a list of every model that has ever been seen by the server, as well as the fields available in that model
@@ -79,6 +55,7 @@ async def get_prediction_model_tags():
     valid_workers = {w[2]: w[3] for w in worker_data if w[0] == 'prediction'}
 
     return {"tags": valid_workers}
+
 
 @model_router.get("/types", dependencies=[Depends(current_user_investigator)])
 async def get_prediction_model_types():
@@ -393,6 +370,7 @@ def get_available_prediction_models():
     worker_data = [w.name.split(';') for w in Worker.all(redis)]
     valid_workers = set(w[2] for w in worker_data if w[0] == 'prediction')
     return list(valid_workers)
+
 
 def get_models_by_type(model_type):
     """
