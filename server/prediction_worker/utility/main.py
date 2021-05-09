@@ -1,65 +1,42 @@
 import os
-import requests
+import json
 from model.model import predict, init
-from model.config import model_name, model_tags
-from worker import shutdown
-import time
+from model.config import model_name, model_type
+from pymongo import MongoClient
+
+client = MongoClient(os.getenv('DB_HOST', default='database'), 27017)
+database_object_collection = client['server_database']['objects']
+database_model_collection = client['server_database']['models']
 
 
-API_KEY = os.getenv('API_KEY')
-SERVER_SOCKET = os.getenv('SERVER_SOCKET')
+def predict_object(object_hash, prediction_obj):
+    try:
+        result = predict(prediction_obj)  # Create prediction on model
+    except Exception as e:
+        # Do not send prediction results to server on crash.
+        print(e)
+        print('[Error] Model Prediction Crash. Model: [' + model_name + '] Hash:[' + object_hash + ']', flush=True)
+        return
 
-def register_to_server():
-    """
-    Registers a prediction model to the server. This will automatically register the correct name
-    for the model.
-    """
-    # raise Exception(model_tags)
-    while not shutdown:
-        try:  # Register to server
-            headers = {'api_key': API_KEY}
-            r = requests.post(
-                SERVER_SOCKET + '/model/register',
-                headers=headers,
-                json={'name': model_name, "modelTags": model_tags}
-            )
-            r.raise_for_status()
-            if r.status_code != 200:
-                print('[Error] Model Registration Unable to Authenticate to Server. Model: [' + model_name +']')
+    print('Prediction Complete', result, flush=True)
 
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-            print('[Error] Model Registration Unable to Connect to Server. Model: [' + model_name +']')
+    # Update model results in the database
+    current_image_obj = database_object_collection.find_one({"hash_md5": object_hash})
+    if current_image_obj:
+        nm = [list(current_image_obj['models'].values()), model_name, result['result']] + current_image_obj['file_names']
+        metadata_str = json.dumps(nm)
+        for char_to_replace in ['"', "'", "\\", '[', ']', '{', '}']:
+            metadata_str = metadata_str.replace(char_to_replace, '')
 
-        # After sending request, we will wait before re-registering to server.
-        sleepTimeInSeconds = 10
-        while sleepTimeInSeconds > 0 and not shutdown:
-            time.sleep(1)
-            sleepTimeInSeconds -= 1
+        database_object_collection.update_one({'hash_md5': object_hash}, {'$set': {
+            'models.' + model_name: result['result'],
+            'metadata': metadata_str
+        }})
 
-    print('[Worker] Registration Thread Shutting down.')
-
-
-def predict_image(image_hash, image_file_name):
-    # try:
-    result = predict(image_file_name)  # Create prediction on model
-    # except:
-    #     # Do not send prediction results to server on crash. 
-    #     print('[Error] Model Prediction Crash. Model: [' + model_name + '] Hash:[' + image_hash + ']')
-    #     return
-
-    try:  # Send prediction results back to server
-        headers = {
-            'api_key': API_KEY
-        }
-        r = requests.post(
-            SERVER_SOCKET + '/model/predict_result',
-            headers=headers,
-            json={
-                'model_name': model_name,
-                'image_hash': image_hash,
-                'results': result
-            }
-        )
-        r.raise_for_status()
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.HTTPError):
-        print('[Error] Model Result Sending Failure. Model: [' + model_name +'] Hash:[' + image_hash + ']')
+    # Add model structure to server database.
+    if not database_model_collection.find_one({'model_name': model_name}):
+        database_model_collection.insert_one({
+            'model_name': model_name,
+            'model_fields': result['classes'],
+            'model_type': model_type
+        })

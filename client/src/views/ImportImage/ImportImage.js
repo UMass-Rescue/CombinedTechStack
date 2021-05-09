@@ -87,7 +87,7 @@ const Import = () => {
     useEffect(() => {
         axios.request({
                 method: 'get', 
-                url: baseurl + api['model_predict_list'], 
+                url: baseurl + api['model_image_list'], 
                 headers: { Authorization: 'Bearer ' + Auth.token } 
             }).then((response) => {
                 setModelsAvailable(response.data['models']);
@@ -154,12 +154,14 @@ const Import = () => {
                     if (currIndex >= filesToUpload.length) {
                         break;
                     }
-                    formData.append('images', filesToUpload[currIndex]);
+                    formData.append('objects', filesToUpload[currIndex]);
                     fileNames.push(filesToUpload[currIndex].name);
                 }
                 for (let i = 0; i < modelsToUse.length; i++) {
                     formData.append('models', modelsToUse[i]);
                 }
+
+                formData.append('model_type',"image")
 
                 const config = {
                     'Authorization': 'Bearer ' + Auth.token,

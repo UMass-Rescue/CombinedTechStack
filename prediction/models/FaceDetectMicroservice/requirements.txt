@@ -6,3 +6,4 @@ mtcnn
 matplotlib
 opencv-python-headless
 tensorflow
+pymongo

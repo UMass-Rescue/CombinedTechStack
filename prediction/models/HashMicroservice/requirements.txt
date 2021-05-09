@@ -3,3 +3,4 @@ requests
 rq
 redis
 imagehash
+pymongo
