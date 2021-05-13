@@ -65,7 +65,7 @@ def set_user_roles_db(username: str, updated_roles: list) -> bool:
 # API Key Database Interactions
 # ---------------------------
 
-def add_api_key_db(key: APIKeyData) -> dict:
+def add_api_key_db(key: APIKeyData):
     """
     Adds a new API key into the database.
 
@@ -75,9 +75,6 @@ def add_api_key_db(key: APIKeyData) -> dict:
 
     if not api_key_collection.find_one({"key": key.key}):
         api_key_collection.insert_one(key.dict())
-        return {'status': 'success', 'detail': 'API key successfully added.'}
-    else:
-        return {'status': 'failure', 'detail': 'API key with desired key already exists.'}
 
 
 def get_api_key_by_key_db(key: str) -> Union[APIKeyData, None]:
