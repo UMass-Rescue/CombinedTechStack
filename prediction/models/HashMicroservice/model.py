@@ -20,7 +20,7 @@ def predict(image_file_name):
     with the image as an input.
     """
 
-    image = Image.open('/app/images/'+image_file_name)
+    image = Image.open('/app/objects/'+image_file_name)
 
     md5 = hashlib.md5(image.tobytes()).hexdigest()
     sha1 = hashlib.sha1(image.tobytes()).hexdigest()

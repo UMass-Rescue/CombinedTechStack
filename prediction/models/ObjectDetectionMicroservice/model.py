@@ -59,17 +59,17 @@ def predict(prediction_input):
     'text'   :  Model receives a string of text and uses it to create a prediction.
 
 
-    Note: All images are stored in the directory '/app/images/' in the Docker container. You may assume that the file
+    Note: All images are stored in the directory '/app/objects/' in the Docker container. You may assume that the file
     name that is passed to this method is valid and that the image file exists.
 
     Example code for opening the image using PIL:
-    image = Image.open('/app/images/'+image_file_name)
+    image = Image.open('/app/objects/'+image_file_name)
     """
 
     global model, label_map, super_COCO_classes, classes, result, score_threshold
     for key in result:
         result[key] = 0
-    image = Image.open('/app/images/' + prediction_input)
+    image = Image.open('/app/objects/' + prediction_input)
     image_tensor = transforms.functional.to_tensor(image)
 
     output = model([image_tensor])

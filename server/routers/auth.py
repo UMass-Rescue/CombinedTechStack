@@ -12,6 +12,7 @@ from db_connection import get_user_by_name_db, add_user_db, set_user_roles_db, a
 from dependency import pwd_context, logger, oauth2_scheme, TokenData, User, CredentialException, Roles, \
     ExternalServices, APIKeyData
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 
 auth_router = APIRouter()
 
@@ -158,21 +159,39 @@ def add_permission_to_user(username, role):
 
     user = get_user_by_name_db(username)
     if not user:
-        return {'status': 'failure', 'detail': 'User does not exist. Unable to modify permissions.'}
+        return JSONResponse(
+            status_code=404,
+            content={
+                'detail': 'User with provided name does not exist. Unable to modify permissions.',
+                'username': username
+            }
+        )
 
     # Ensure that the role name is valid
     if role not in list(Roles.__members__):
-        return {'status': 'failure', 'detail': 'Role specified does not exist. Unable to modify permissions.'}
+        return JSONResponse(
+            status_code=404,
+            content={
+                'detail': 'Role specified does not exist. Unable to modify permissions.',
+                'role': role
+            }
+        )
 
     if role in user.roles:
-        return {'status': 'success',
-                'detail': 'User ' + str(username) + ' already has role ' + str(role) + '. No changes made.'}
+        return {
+            'detail': 'No permissions changed. User already has role.',
+            'username': username,
+            'role': role
+        }
 
     user_new_role_list = user.roles.copy()
     user_new_role_list.append(role)
     set_user_roles_db(username, user_new_role_list)
-    return {'status': 'success',
-            'detail': 'User ' + str(username) + ' added to role ' + str(role) + '.'}
+    return {
+        'detail': 'Permissions successfully updated. User has been added to role.',
+        'username': username,
+        'role': role
+    }
 
 
 @auth_router.post('/remove_role', dependencies=[Depends(current_user_admin)])
@@ -188,21 +207,39 @@ def remove_permission_from_user(username: str, role: str):
 
     user = get_user_by_name_db(username)
     if not user:
-        return {'status': 'failure', 'detail': 'User does not exist. Unable to modify permissions.'}
+        return JSONResponse(
+            status_code=404,
+            content={
+                'detail': 'User with provided name does not exist. Unable to modify permissions.',
+                'username': username
+            }
+        )
 
     # Ensure that the role name is valid
     if role not in list(Roles.__members__):
-        return {'status': 'failure', 'detail': 'Role specified does not exist. Unable to modify permissions.'}
+        return JSONResponse(
+            status_code=404,
+            content={
+                'detail': 'Role specified does not exist. Unable to modify permissions.',
+                'role': role
+            }
+        )
 
     if role not in user.roles:
-        return {'status': 'success',
-                'detail': 'User ' + str(username) + ' does not have role ' + str(role) + '. No changes made.'}
+        return {
+            'detail': 'No permissions changed. User does not have role.',
+            'username': username,
+            'role': role
+        }
 
     user_new_role_list = user.roles.copy()
     user_new_role_list.remove(role)
     set_user_roles_db(username, user_new_role_list)
-    return {'status': 'success',
-            'detail': 'User ' + str(username) + ' removed from role ' + str(role) + '.'}
+    return {
+        'detail': 'Permissions successfully updated. User has been removed from role.',
+        'username': username,
+        'role': role
+    }
 
 
 @auth_router.post("/login")
@@ -226,11 +263,11 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    return {"status": 'success',
-            'detail': 'Successfully Logged In.',
-            "access_token": access_token,
-            "token_type": "bearer"
-            }
+    return {
+        'detail': 'Successfully Logged In.',
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 
 @auth_router.post('/new')
@@ -258,9 +295,15 @@ def create_account(username: str, password: str, email: str = None, full_name: s
     result = add_user_db(u)
 
     if not result:
-        return {'status': 'failure', 'detail': 'Account  with this username already exists'}
+        return JSONResponse(
+            status_code=400,
+            content={
+                'detail': 'Account with provided username already exists.',
+                'username': username
+            }
+        )
 
-    return {'status': 'success', 'detail': 'account with username [' + username + '] created.'}
+    return {'detail': 'Account successfully created', 'username': username}
 
 
 @auth_router.get("/status", dependencies=[Depends(get_current_active_user)])
@@ -271,7 +314,7 @@ def get_login_status():
     :return: {'status': 'success'} if logged in, else dependency.CredentialException
     """
 
-    return {'status': 'success', 'detail': 'User is Authenticated.'}
+    return {'detail': 'User is Authenticated.'}
 
 
 @auth_router.get("/profile")
@@ -308,19 +351,23 @@ def add_api_key(key_owner_username: str, service: str, detail: str = ""):
     user = get_user_by_name_db(key_owner_username)
 
     if not user:
-        return {
-            'status': 'failure',
-            'detail': 'Desired Key owner username does not exist. Unable to create API key.',
-            'username': key_owner_username
-        }
+        return JSONResponse(
+            status_code=404,
+            content={
+                'detail': 'Desired Key owner username does not exist. Unable to create API key.',
+                'username': key_owner_username
+            }
+        )
 
     # Ensure that the service name for the key is valid
     if service not in list(ExternalServices.__members__):
-        return {
-            'status': 'failure',
-            'detail': 'Service specified does not exist. Unable to create API key.',
-            'service': service
-        }
+        return JSONResponse(
+            status_code=404,
+            content={
+                'detail': 'Service specified does not exist. Unable to create API key.',
+                'service': service
+            }
+        )
 
     api_key_string = str(uuid.uuid4())
 
@@ -332,19 +379,9 @@ def add_api_key(key_owner_username: str, service: str, detail: str = ""):
         'enabled': True
     })
 
-    result = add_api_key_db(api_key_object)
+    add_api_key_db(api_key_object)
 
-    # If successful, return success message and the API key object
-    if result['status'] == 'success':
-        return {
-            'status': 'success',
-            **api_key_object.dict()
-        }
-
-    return {
-        'status': 'failure',
-        'detail': 'API Key Creation Database Error. Please contact an administrator.'
-    }
+    return {**api_key_object.dict()}
 
 
 @auth_router.get('/key')
@@ -358,10 +395,7 @@ def get_api_key(current_user: User = Depends(get_current_active_user)):
     """
     all_user_keys = get_api_keys_by_user_db(current_user)
 
-    return {
-        'status': 'success',
-        'keys': all_user_keys
-    }
+    return {'keys': all_user_keys}
 
 
 @auth_router.delete('/key')
@@ -378,11 +412,13 @@ def disable_api_key(key: str, current_user: User = Depends(get_current_active_us
     key = get_api_key_by_key_db(key)
 
     if not key:
-        return {
-            'status': 'failure',
-            'detail': 'Invalid API key provided. Unable to delete.',
-            'key': key
-        }
+        return JSONResponse(
+            status_code=404,
+            content={
+                'detail': 'Unable to find API key specified.',
+                'key': key
+            }
+        )
 
     # If it is not the user's key and they are not an admin, then don't allow key to be disabled.
     if key.user != current_user.username and Roles.admin.name not in current_user.roles:
@@ -390,8 +426,7 @@ def disable_api_key(key: str, current_user: User = Depends(get_current_active_us
 
     set_api_key_enabled_db(key, False)
     return {
-        'status': 'success',
-        'detail': 'API key has been removed.',
+        'detail': 'API key disabled.',
         'key': key,
     }
 
@@ -407,11 +442,13 @@ def disable_api_key(key: str, current_user: User = Depends(get_current_active_us
 def create_admin_account_testing():
 
     if get_user_by_name_db('admin'):
-        return {
-            'status': 'failure',
-            'detail': 'Admin account already exists.',
-            'account': 'Username: "admin", Password: "password"'
-        }
+        return JSONResponse(
+            status_code=400,
+            content={
+                'detail': 'Admin account already exists. Please log in with provided credentials',
+                'credentials': 'Username: "admin", Password: "password"'
+            }
+        )
 
     u = User(
         username='admin',
@@ -423,10 +460,10 @@ def create_admin_account_testing():
     add_user_db(u)
 
     return {
-        'status': 'success',
         'detail': 'Admin account has been created.',
         'account': 'Username: "admin", Password: "password"'
     }
+
 
 def create_testing_account():
     """
@@ -446,6 +483,7 @@ def create_testing_account():
         )
 
         add_user_db(u)
+
 
 def create_testing_keys():
     """

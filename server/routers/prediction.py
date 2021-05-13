@@ -1,10 +1,8 @@
 import hashlib
 import os
 import shutil
-from itertools import chain
-
+from fastapi.responses import JSONResponse
 from rq.registry import StartedJobRegistry
-import filetype
 
 import dependency
 from fastapi import File, UploadFile, HTTPException, Depends, APIRouter, Form
@@ -19,48 +17,23 @@ from typing import List
 from rq import Queue
 import uuid
 
-
 model_router = APIRouter()
 
 
 @model_router.get("/list", dependencies=[Depends(current_user_investigator)])
-def get_model_names():
+async def get_prediction_models(model_type: str = ''):
     """
-    Returns list of available models to the client. This list can be used when calling get_prediction,
-    with the request
-    """
-    return {"models": get_available_prediction_models()}
-
-
-@model_router.get("/list/image", dependencies=[Depends(current_user_investigator)])
-async def get_available_image_models():
-    """
-    Returns list of available models to the client. This list can be used when calling get_prediction,
-    with the request
+    Returns a list of available models to the client. This will be filtered by an optional type of "image", "text",
+    or "video". If no type is specified, then all available models will be returned
     """
 
-    return {"models": get_models_by_type("image")}
+    if model_type == '':
+        get_available_prediction_models()
+
+    return {"models": get_models_by_type(model_type)}
 
 
-@model_router.get("/list/video", dependencies=[Depends(current_user_investigator)])
-async def get_available_video_models():
-    """
-    Returns list of available models to the client. This list can be used when calling get_prediction,
-    with the request
-    """
-    return {"models": get_models_by_type("video")}
-
-
-@model_router.get("/list/text", dependencies=[Depends(current_user_investigator)])
-async def get_available_text_models():
-    """
-    Returns list of available models to the client. This list can be used when calling get_prediction,
-    with the request
-    """
-    return {"models": get_models_by_type("text")}
-
-
-@model_router.get("/all", dependencies=[Depends(current_user_investigator)])
+@model_router.get("/list/all", dependencies=[Depends(current_user_investigator)])
 async def get_all_prediction_models():
     """
     Returns a list of every model that has ever been seen by the server, as well as the fields available in that model
@@ -79,6 +52,7 @@ async def get_prediction_model_tags():
     valid_workers = {w[2]: w[3] for w in worker_data if w[0] == 'prediction'}
 
     return {"tags": valid_workers}
+
 
 @model_router.get("/types", dependencies=[Depends(current_user_investigator)])
 async def get_prediction_model_types():
@@ -114,49 +88,48 @@ def create_new_prediction(models: List[str] = (),
 
     invalid_models = []
     for model in models:
+        # Ensure that the desired model is running
         if model not in get_available_prediction_models():
             invalid_models.append(model)
-        # make sure models alighn with the model_type
-        if not model in get_models_by_type(model_type): 
+
+        # Ensure desired model is the correct type for input
+        if model not in get_models_by_type(model_type):
             invalid_models.append(model)
 
     if invalid_models:
         error_message = "Invalid Models Specified: " + ''.join(list(set(invalid_models)))
         return HTTPException(status_code=400, detail=error_message)
 
-    # Now we must hash each uploaded object
-    # After hashing, we will store the object file on the server.
 
+    # Now we must hash each uploaded object to get a unique identifier
+    # After hashing, we will store the object file temporarily in a Docker volume
     buffer_size = 65536  # Read object data in 64KB Chunks for hashlib
-    hashes_md5 = {}
+    processed_image_hashes = {}
 
     # Process uploaded objects
     for upload_file in objects:
         file_obj = upload_file.file
-        # file_type = filetype.guess(file_obj).mime.split("/")[0]
-        # if model_type != file_type:
-        #     error_message = "Invalid type for object: " + upload_file.filename + 'is type:' + file_type
-        #     return HTTPException(status_code=400, detail=error_message)
         md5 = hashlib.md5()
-        
-        # Video , Image , Text
+
+        # Obtain MD5 hash for uploaded object by reading it in blocks and updating the hash
         while True:
             data = file_obj.read(buffer_size)
             if not data:
                 break
             md5.update(data)
 
-        # Process object
+        # Obtain final hash value and set the result dict
         hash_md5 = md5.hexdigest()
-        hashes_md5[upload_file.filename] = hash_md5
+        processed_image_hashes[upload_file.filename] = hash_md5
 
+        # Reset the file to the initial position for further processing
         file_obj.seek(0)
 
+        # Either add object to database if it doesn't exist or get the current object from the database
         if get_object_by_md5_hash_db(hash_md5):
             prediction_obj = get_object_by_md5_hash_db(hash_md5)
-        else:  # If object does not already exist in db
-
-            # Create a UniversalMLPredictionObject object to store data
+        else:
+            # Create a UniversalMLPredictionObject object to store data (dependency.py)
             prediction_obj = UniversalMLPredictionObject(**{
                 'file_names': [upload_file.filename],
                 'hash_md5': hash_md5,
@@ -166,7 +139,7 @@ def create_new_prediction(models: List[str] = (),
                 'user_role_able_to_tag': ['admin']
             })
 
-            # For text file add text into the object
+            # If the type of the object is 'text' we add the text content to the object
             if model_type == 'text':
                 prediction_obj.text_content = file_obj.read()
 
@@ -188,7 +161,7 @@ def create_new_prediction(models: List[str] = (),
 
             for model in models:
                 Queue(name=model, connection=redis).enqueue(
-                    'utility.main.predict_object', hash_md5, new_filename, job_id=hash_md5+model+str(uuid.uuid4())
+                    'utility.main.predict_object', hash_md5, new_filename, job_id=hash_md5 + model + str(uuid.uuid4())
                 )
         # just for text, because instead of file_name, text predict takes the text content
         else:
@@ -196,10 +169,10 @@ def create_new_prediction(models: List[str] = (),
             text_content = text_content.decode('UTF-8')
             for model in models:
                 Queue(name=model, connection=redis).enqueue(
-                    'utility.main.predict_object', hash_md5, text_content, job_id=hash_md5+model+str(uuid.uuid4())
+                    'utility.main.predict_object', hash_md5, text_content, job_id=hash_md5 + model + str(uuid.uuid4())
                 )
 
-    return {"prediction objects": [hashes_md5[key] for key in hashes_md5]}
+    return {"prediction objects": [processed_image_hashes[key] for key in processed_image_hashes]}
 
 
 @model_router.post("/results", dependencies=[Depends(current_user_investigator)])
@@ -220,7 +193,8 @@ async def get_jobs(md5_hashes: List[str]):
     # hash we want to find. We must get all running and pending jobs to return the correct value
     all_jobs = set()
     for model in get_available_prediction_models():
-        all_jobs.update(StartedJobRegistry(model, connection=redis).get_job_ids() + Queue(model, connection=redis).job_ids)
+        all_jobs.update(
+            StartedJobRegistry(model, connection=redis).get_job_ids() + Queue(model, connection=redis).job_ids)
 
     for md5_hash in md5_hashes:
 
@@ -230,7 +204,6 @@ async def get_jobs(md5_hashes: List[str]):
             if md5_hash in job_id and Job.fetch(job_id, connection=redis).get_status() != 'finished':
                 found_pending_job = True
                 results.append({
-                    'status': 'success',
                     'detail': 'Object has pending predictions. Check back later for all model results.',
                     **object.dict()
                 })
@@ -243,18 +216,16 @@ async def get_jobs(md5_hashes: List[str]):
         # If we haven't found a pending job for this object, and it doesn't exist in our database, then that
         # means that the object hash must be invalid.
         if not object:
-            results.append({
-                'status': 'failure',
-                'detail': 'Unknown md5 hash specified.',
-                'hash_md5': md5_hash
-            })
-            continue
+            return JSONResponse(
+                status_code=404,
+                content={
+                    'detail': 'Unable to find result for specified hash',
+                    'hash': md5_hash
+                }
+            )
 
         # If everything is successful with object, return data
-        results.append({
-            'status': 'success',
-            **object.dict()
-        })
+        results.append({**object.dict()})
     return results
 
 
@@ -291,22 +262,23 @@ def search_objects(
 
     if page_id <= 0:
         return {
-            'status': 'success',
             'num_pages': num_pages,
             'page_size': page_size,
             'num_objects': num_objects
         }
     elif page_id > num_pages:
-        return {
-            'status': 'failure',
-            'detail': 'Page does not exist.',
-            'num_pages': num_pages,
-            'page_size': page_size,
-            'num_objects': num_objects,
-            'current_page': page_id}
+        return JSONResponse(
+            status_code=400,
+            content={
+                'detail': 'Page does not exist.',
+                'num_pages': num_pages,
+                'page_size': page_size,
+                'num_objects': num_objects,
+                'current_page': page_id
+            }
+        )
 
     return {
-        'status': 'success',
         'num_pages': num_pages,
         'page_size': page_size,
         'num_objects': num_objects,
@@ -331,10 +303,12 @@ def download_search_object_hashes(
     :return: List of object hashes associated with user
     """
     if search_string == '' and not search_filter:
-        return {
-            'status': 'failure',
-            'detail': 'You must specify a search string or search filter'
-        }
+        return JSONResponse(
+            status_code=400,
+            content={
+                'detail': 'You must specify a search string or search filter'
+            }
+        )
 
     if not search_filter:
         filter_to_use = {}
@@ -350,7 +324,6 @@ def download_search_object_hashes(
     hashes = db_result['hashes']
 
     return {
-        'status': 'success',
         'hashes': hashes
     }
 
@@ -371,7 +344,8 @@ async def update_tags(md5_hashes: List[str], username: str, remove_tags: List[st
 
 
 @model_router.post("/tag/role/update")
-async def update_object_tag_roles(md5_hashes: List[str], username: str, remove_roles: List[str] = [], new_roles: List[str] = []):
+async def update_object_tag_roles(md5_hashes: List[str], username: str, remove_roles: List[str] = [],
+                                  new_roles: List[str] = []):
     """
     Find an object and add roles_able_to_tag into its universalMLpredictionobject object "user_role_able_to_tag" field, so that role can update
     that object's tags
@@ -409,6 +383,7 @@ async def update_image_tags(md5_hashes: List[str], username: str, new_tags: List
     return result
 
 
+
 def get_models_by_type(model_type):
     """
     Returns list of types for each available model
@@ -422,4 +397,3 @@ def get_models_by_type(model_type):
             retModels.append(key)
 
     return list(set(retModels))
-

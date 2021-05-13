@@ -74,7 +74,7 @@ async function loadRowsFromServer(pageNumber, dataFilter, searchString) {
     // First we request the list of image hashes on this page, then we load the data for those hashes
     let response = await axios.request(httpRequestDetails);
 
-    if (response.data['status'] === 'failure') {
+    if (response.status !== 200) {
         console.log('[Error] Unable to load row data.')
         return []; // Return empty rows if unable to load 
     }
@@ -92,16 +92,14 @@ async function loadRowsFromServer(pageNumber, dataFilter, searchString) {
     let newImageData = [];
 
     response.data.forEach((imageModelResult) => {
-        if (imageModelResult['status'] === 'success') {
-            let rowData = {
-                id: imageModelResult['hash_md5'],
-                hash_md5: imageModelResult['hash_md5'],
-                file_names: imageModelResult['file_names'].join(', '),
-                users: imageModelResult['users'],
-                tags: (imageModelResult['tags'])?imageModelResult['tags']:[],
-            };
-            newImageData.push(rowData);
-        }
+        let rowData = {
+            id: imageModelResult['hash_md5'],
+            hash_md5: imageModelResult['hash_md5'],
+            file_names: imageModelResult['file_names'].join(', '),
+            users: imageModelResult['users'],
+            tags: (imageModelResult['tags'])?imageModelResult['tags']:[],
+        };
+        newImageData.push(rowData);
     });
 
     return newImageData;
@@ -137,7 +135,7 @@ async function updateImageTags(image_hash, tags) {
     // send request to update the tags
     try {
         let response = await axios.request(httpRequestDetails);
-        if (response.data[0]['status'] === 'success') {
+        if (response.status === 200) {
             return true;
         }
     } catch(err) {
@@ -178,7 +176,7 @@ const Review = () => {
     const [tempTagsInDialog, setTempTagsInDialog] = useState([]); // Current data being shown in table
 
     // On RowSelected, open a popup for adding tags
-    function handleRowSelected(param: GridRowSelectedParams) {
+    function handleRowSelected(param) {
         // param.data
         const tags = param.data.tags.toString();
         if(tags !== "") {
@@ -236,7 +234,7 @@ const Review = () => {
     }
 
     // Table columns
-   const columns: ColDef[]  = [
+   const columns  = [
         { field: 'file_names', headerName: 'File Names', width: 300 },
         { field: 'users', headerName: 'Users', width: 200 },
         { 
@@ -244,7 +242,7 @@ const Review = () => {
             headerName: 'Tags', 
             width: 300, 
             sortable: false,
-            renderCell: (params: CellParams) => (
+            renderCell: (params) => (
                 <div>
                 {
                     // need to fix this after the backend is connected, now it somehow stores array in string

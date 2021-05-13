@@ -440,7 +440,7 @@ const Train = () => {
                                     <Divider/>
                                 </Grid>
 
-                                {Object.keys(searchedJob).length > 0 && searchedJob['status'] === 'success' &&
+                                {Object.keys(searchedJob).length > 0 &&
 
                                 <Grid item xs={6}>
                                     <Grid container justify='space-between'>
@@ -564,7 +564,7 @@ const Train = () => {
                                     </Grid>
                                 </Grid>
                                 }
-                                {Object.keys(searchedJob).length > 0 && searchedJob['status'] !== 'success' &&
+                                {Object.keys(searchedJob).length > 0 &&
                                 <Grid item xs={6}>
                                     <Typography variant='h4' component='h4' color='primary' align='center'>
                                         Unable to find job with specified training ID.

@@ -32,7 +32,7 @@ def predict(image_file_name):
     if model is None:
         raise RuntimeError("SceneDetection model is not loaded properly")
 
-    model.load_image('/app/images/'+image_file_name)
+    model.load_image('/app/objects/'+image_file_name)
     scene_detect_result = model.predict_scene()
 
     return {

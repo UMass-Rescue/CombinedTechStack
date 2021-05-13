@@ -51,7 +51,7 @@ const Login = () => {
             }
         }
         axios.post(baseurl + api['login'], formData, config).then((response) => {
-            if ('status' in response.data) {
+            if (response.status === 200) {
                 Auth.token = response.data['access_token'];
                 Auth.isAuthenticated = true;
                 localStorage.setItem('token', Auth.token);
@@ -107,16 +107,16 @@ const Login = () => {
                         <CardContent>
                             <Grid container spacing={1} alignItems="flex-end">
                                 {/* Row 1 */}
-                                <Grid xs={2} item></Grid>
+                                <Grid xs={2} item/>
                                 <Grid item xs={8}>
                                     <Typography variant={"h2"}>Sign In</Typography>
                                 </Grid>
-                                <Grid xs={2} item></Grid>
+                                <Grid xs={2} item/>
                                 <Grid item xs={12} className={classes.spacingGridRow} />
 
 
                                 {/* Row 2 */}
-                                <Grid xs={2} item></Grid>
+                                <Grid xs={2} item/>
                                 <Grid item xs={8}>
                                     <TextField 
                                         variant="outlined" 
@@ -128,12 +128,12 @@ const Login = () => {
                                         onKeyDown={(e) => pressEnterToLogin(e)}
                                     />
                                 </Grid>
-                                <Grid xs={2} item></Grid>
+                                <Grid xs={2} item/>
                                 <Grid item xs={12} className={classes.spacingGridRow} />
 
 
                                 {/* Row 3 */}
-                                <Grid xs={2} item></Grid>
+                                <Grid xs={2} item/>
                                 <Grid item xs={8}>
                                     <TextField 
                                         variant="outlined" 
@@ -146,17 +146,17 @@ const Login = () => {
                                         onKeyDown={(e) => pressEnterToLogin(e)}
                                     />                                
                                 </Grid>
-                                <Grid xs={2} item></Grid>
+                                <Grid xs={2} item/>
                                 <Grid item xs={12} className={classes.spacingGridRow} />
 
-                                <Grid xs={2} item></Grid>
+                                <Grid xs={2} item/>
                                 <Grid item xs={8}>
                                     <Typography variant="subtitle1" color='error'>{errorMessage}</Typography>
                                 </Grid>
-                                <Grid xs={2} item></Grid>
+                                <Grid xs={2} item/>
 
                                 {/* Row 4 */}
-                                <Grid xs={2} item></Grid>
+                                <Grid xs={2} item/>
                                 <Grid item xs={8}>
                                     <Button
                                         variant="contained" color="secondary" type="submit"
@@ -166,7 +166,7 @@ const Login = () => {
                                         Login
                                     </Button>
                                 </Grid>
-                                <Grid xs={2} item></Grid>
+                                <Grid xs={2} item/>
 
                             </Grid>
                         </CardContent>

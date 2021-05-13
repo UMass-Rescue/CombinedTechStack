@@ -1,9 +1,9 @@
 import pytest
 
-from routers import prediction, training
+from routers import training
 
-from dependency import api_key_collection, UniversalMLPredictionObject
-from db_connection import get_user_by_name_db, get_api_keys_by_user_db, add_object_db
+from dependency import api_key_collection
+from db_connection import get_user_by_name_db, get_api_keys_by_user_db
 from main import app
 from routers.auth import create_testing_account, create_testing_keys
 from routers.auth import (
