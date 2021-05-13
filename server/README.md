@@ -35,7 +35,7 @@ microservice type.
 Use the following API endpoint with Postman or the client to generate the keys:
 `POST /auth/key`
 
-See the [[Postman Endpoint Collection]](https://www.getpostman.com/collections/166692ca1495a1c8e566) for more information. (Click the orange button at the bottom of this page to automatically import the collection.)
+See the postman collection link in README.md at the root directory for more...
 
 ##### [Step 1] Build Docker Container
 Download dependencies with Docker and build container
@@ -70,4 +70,4 @@ Postman is an exceptional tool for testing, calling, and debugging API endpoints
 your development, you may download the collection of pre-made endpoints with their associated
 parameters.
 
-[![Run in Postman](https://run.pstmn.io/button.svg)](https://app.getpostman.com/run-collection/166692ca1495a1c8e566)
+See the README.md in the root directory for a direct link to the collection in Postman.
