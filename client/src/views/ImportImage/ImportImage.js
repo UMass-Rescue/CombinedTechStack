@@ -161,13 +161,13 @@ const Import = () => {
                     formData.append('models', modelsToUse[i]);
                 }
 
-                const parameters = {'model_type':'image'}
+                formData.append('model_type',"image")
 
                 const config = {
                     'Authorization': 'Bearer ' + Auth.token,
                     'content-type': 'multipart/form-data'
                 };
-                axios.request({ url: requestURL, parameters, method: 'post', headers: config, data: formData, params: parameters }).then((response) => {
+                axios.request({ url: requestURL, method: 'post', headers: config, data: formData }).then((response) => {
                     setOpen(true); // Display success message
                     setFilesUploaded(curr => [...curr, ...fileNames]);
                 });

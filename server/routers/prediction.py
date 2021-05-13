@@ -368,6 +368,21 @@ def get_available_prediction_models():
     valid_workers = set(w[2] for w in worker_data if w[0] == 'prediction')
     return list(valid_workers)
 
+  
+@model_router.post("/tag/update")
+async def update_image_tags(md5_hashes: List[str], username: str, new_tags: List[str] = []):
+    """
+    Find list of images and add tags into its universalMLimage object "tags" field
+
+    :param md5_hashes: List of hashes for universal ml image object
+    :param username: username of the current user
+    :param new_tags: list of image tags that need to be added to image object
+    :return: json with status and detail
+    """
+    result = update_tags_to_image(md5_hashes, username, new_tags)
+    return result
+
+
 
 def get_models_by_type(model_type):
     """
